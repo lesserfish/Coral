@@ -1,5 +1,6 @@
 #![allow(unused)]
-use crate::{mos::types::Bus, mos::primitive::*, utils::join_bytes, mos::types::AddrMode};
+use crate::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode};
+use crate::utils::{self, join_bytes, page_cross_sum};
 
 pub fn fetch<T : Bus>(bus : &mut T) -> u8 {
     let pc = offset_pc(bus, 1);
@@ -19,8 +20,17 @@ fn get_address<T : Bus>(bus : &mut T, address_mode : AddrMode) -> u16 {
         AddrMode::AbsoluteX => ga_absolute_x(bus),
         AddrMode::AbsoluteY => ga_absolute_y(bus),
         AddrMode::Indirect  => ga_indirect(bus),
+        AddrMode::IndirectX => ga_indirect_x(bus),
+        AddrMode::IndirectY => ga_indirect_y(bus),
         _ => 0
     };
+}
+
+fn handle_super_addressing<T : Bus>(bus : &mut T){
+    let super_instruction = get_super_instruction(bus);
+    if(super_instruction){
+        update_cycles(bus, 1);
+    }
 }
 
 fn ga_immediate<T : Bus>(bus : &mut T) -> u16 {
@@ -29,40 +39,102 @@ fn ga_immediate<T : Bus>(bus : &mut T) -> u16 {
 fn ga_zeropage<T : Bus>(bus : &mut T) -> u16 {
     let lsb_address = offset_pc(bus, 1);
     let lsb = bus.read_byte(lsb_address);
-    join_bytes(0x00, lsb)
+    utils::join_bytes(0x00, lsb)
 }
 fn ga_zeropage_x<T : Bus>(bus : &mut T) -> u16 {
     let lsb_address = offset_pc(bus, 1);
     let x = get_idx(bus);
     let lsb = bus.read_byte(lsb_address);
-    join_bytes(0x00, lsb + x)
+    utils::join_bytes(0x00, lsb + x)
 
 }
 fn ga_zeropage_y<T : Bus>(bus : &mut T) -> u16 {
     let lsb_address = offset_pc(bus, 1);
     let y = get_idy(bus);
     let lsb = bus.read_byte(lsb_address);
-    join_bytes(0x00, lsb + y)
+    utils::join_bytes(0x00, lsb + y)
 }
-fn ga_relative<T : Bus>(_bus : &mut T) -> u16 {
-    0
+fn ga_relative<T : Bus>(bus : &mut T) -> u16 {
+    let pc= offset_pc(bus, 1);
+    let offset = bus.read_byte(pc) as u16;
+    let relative_offset = if utils::B7(offset) {0xFF00 | offset} else {offset};
+    let (address, page_cross) = utils::page_cross_sum(pc, relative_offset);
+    if(page_cross){
+        handle_super_addressing(bus);
+    }
+    address
 }
-fn ga_absolute<T : Bus>(_bus : &mut T) -> u16 {
-    0
+fn ga_absolute<T : Bus>(bus : &mut T) -> u16 {
+    let lsb_address = offset_pc(bus, 1);
+    let msb_address = offset_pc(bus, 1);
+    let lsb = bus.read_byte(lsb_address);
+    let msb = bus.read_byte(msb_address);
+    join_bytes(msb, lsb)
 }
-fn ga_absolute_x<T : Bus>(_bus : &mut T) -> u16 {
-    0
+fn ga_absolute_x<T : Bus>(bus : &mut T) -> u16 {
+    let lsb_address = offset_pc(bus, 1);
+    let msb_address = offset_pc(bus, 1);
+    let lsb = bus.read_byte(lsb_address);
+    let msb = bus.read_byte(msb_address);
+    let x = get_idx(bus);
+    let (address, page_cross) = utils::page_cross_sum(join_bytes(msb, lsb), join_bytes(0x00, x));
+    if(page_cross){
+        handle_super_addressing(bus);
+    }
+    address
 }
-fn ga_absolute_y<T : Bus>(_bus : &mut T) -> u16 {
-    0
+fn ga_absolute_y<T : Bus>(bus : &mut T) -> u16 {
+    let lsb_address = offset_pc(bus, 1);
+    let msb_address = offset_pc(bus, 1);
+    let lsb = bus.read_byte(lsb_address);
+    let msb = bus.read_byte(msb_address);
+    let y = get_idy(bus);
+    let (address, page_cross) = utils::page_cross_sum(join_bytes(msb, lsb), join_bytes(0x00, y));
+    if(page_cross){
+        handle_super_addressing(bus);
+    }
+    address
 }
-fn ga_indirect<T : Bus>(_bus : &mut T) -> u16 {
-    0
+fn ga_indirect<T : Bus>(bus : &mut T) -> u16 {
+    let lsb1_address = offset_pc(bus, 1);
+    let msb1_address = offset_pc(bus, 1);
+    let lsb1 = bus.read_byte(lsb1_address);
+    let msb1 = bus.read_byte(msb1_address);
+    let lsb_address = utils::join_bytes(msb1, lsb1 + 0);
+    let msb_address = utils::join_bytes(msb1, lsb1 + 1);
+    let lsb = bus.read_byte(lsb_address);
+    let msb = bus.read_byte(msb_address);
+    utils::join_bytes(msb, lsb)
+}
+fn ga_indirect_x<T : Bus>(bus : &mut T) -> u16 {
+    let table_start_address= offset_pc(bus, 1);
+    let table_start = bus.read_byte(table_start_address);
+    let table_offset = get_idx(bus);
+    let table_address = table_start + table_offset;
+    let lsb_address = join_bytes(0x00, table_address + 0);
+    let msb_address = join_bytes(0x00, table_address + 1);
+    let lsb = bus.read_byte(lsb_address);
+    let msb = bus.read_byte(msb_address);
+    join_bytes(msb, lsb)
+}
+fn ga_indirect_y<T : Bus>(bus : &mut T) -> u16 {
+    let table_lsb_address= offset_pc(bus, 1);
+    let table_lsb = bus.read_byte(table_lsb_address);
+    let base_lsb = bus.read_byte(utils::join_bytes(0x00, table_lsb + 0));
+    let base_msb = bus.read_byte(utils::join_bytes(0x00, table_lsb + 1));
+    let base_address = join_bytes(base_msb, base_lsb);
+    let y = get_idy(bus);
+    let (address, page_cross) = page_cross_sum(base_address, y as u16);
+    if(page_cross){
+        handle_super_addressing(bus);
+    }
+    address
 }
 
 pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
 {
     match opcode {
+        0x03 => {},
         0x00 => {
                     update_cycles(bus, 7);
                     op_brk(bus, AddrMode::Implicit);
@@ -699,60 +771,1021 @@ pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
 
 
 
-fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_beq<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bit<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_clc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_cld<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_cli<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_clv<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_cmp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_cpx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_cpy<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_dec<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_dex<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_eor<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_inc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_inx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_iny<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_jmp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_jsr<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_lda<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_ldx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_ldy<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_lsr<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_nop<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_ora<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_pha<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_php<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_pla<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_plp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_rol<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_ror<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sed<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sei<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sta<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_stx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_sty<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_tax<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_tay<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_txs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_txa<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){}
-fn op_undefined<T : Bus>(_bus : &mut T, _address_mode : AddrMode) {}
+//fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_beq<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bit<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_clc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_cld<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_cli<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_clv<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_cmp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_cpx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_cpy<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_dec<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_dex<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_eor<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_inc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_inx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_iny<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_jmp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_jsr<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_lda<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_ldx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_ldy<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_lsr<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_nop<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_ora<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_pha<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_php<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_pla<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_plp<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_rol<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_ror<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sed<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sei<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sta<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_stx<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_sty<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_tax<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_tay<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_txs<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_txa<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+//fn op_undefined<T : Bus>(_bus : &mut T, _address_mode : AddrMode) {}
 
+fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+}
+fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+ 
+}
+fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Accumulator => { // Special Case
+		}
+        _ => {
+        } // END
+	}
+}
+fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+}
+fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_beq<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_bit<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+}
+fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Relative => { // Special Case
+		} // END
+	}
+
+}
+fn op_clc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_cld<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_cli<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_clv<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_cmp<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_cpx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_cpy<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_dec<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+
+}
+fn op_dex<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_eor<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_inc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+
+}
+fn op_inx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_iny<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_jmp<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+}
+fn op_jsr<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+
+
+}
+fn op_lda<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_ldx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageX |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_ldy<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_lsr<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Accumulator => { // Special Case
+		}
+        _ => {} // END
+	}
+}
+fn op_nop<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+        AddrMode::Implicit => { // Special Case
+        } // END
+    }
+}
+fn op_ora<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+}
+fn op_pha<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_php<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_pla<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_plp<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_rol<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Accumulator => { // Special Case
+		}
+        _ => {
+        } // END
+	}
+}
+fn op_ror<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Accumulator => { // Special Case
+		}
+        _ => {
+        } // END
+
+	}
+
+}
+fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+}
+fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_sed<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_sei<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+fn op_sta<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Indirect => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_stx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageX |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_sty<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Implicit |
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		_ => {} // END
+	}
+
+
+}
+fn op_tax<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_tay<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_tsx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_txa<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+
+fn op_txs<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+
+}
+fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){
+	match address_mode {
+		AddrMode::Accumulator |
+		AddrMode::Immediate |
+		AddrMode::Zeropage |
+		AddrMode::ZeropageX |
+		AddrMode::ZeropageY |
+		AddrMode::Relative |
+		AddrMode::Absolute |
+		AddrMode::AbsoluteX |
+		AddrMode::AbsoluteY |
+		AddrMode::Indirect |
+		AddrMode::IndirectX |
+		AddrMode::IndirectY => {} // Non-supported addressing mode
+		AddrMode::Implicit => { // Special Case
+		} // END
+	}
+}
+
+fn op_undefined<T : Bus>(bus : &mut T, address_mode : AddrMode){}
