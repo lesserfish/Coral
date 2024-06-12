@@ -56,9 +56,15 @@ pub fn S15(i : &mut u16, v : bool) { if v { *i |= 0x8000 } else { *i &= !0x8000 
 pub fn join_bytes(msb : u8, lsb : u8) -> u16 {
     (msb as u16) << 8 + (lsb as u16)
 }
-
-
-fn add_signed_offset(x : u16, y : u16) -> u16 {
-    let offset : u16 = if B7(y) {0xFF00 + y} else {y};
-    x + (y & 0x7F) + offset
+pub fn split_bytes(x : u16) -> (u8, u8) {
+    let lsb = x & 0x00FF;
+    let msb = (x & 0xFF00) >> 8;
+    (msb as u8, lsb as u8)
 }
+
+pub fn page_cross_sum(a : u16, b : u16) -> (u16, bool){
+    let output = a + b;
+    let page_cross = !(a & 0xFF00 == output & 0xFF00);
+    (output, page_cross)
+}
+
