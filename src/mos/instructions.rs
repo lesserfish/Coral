@@ -1,11 +1,7 @@
 #![allow(unused)]
-use crate::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode};
-use crate::utils::{self, join_bytes, page_cross_sum};
 
-pub fn fetch<T : Bus>(bus : &mut T) -> u8 {
-    let pc = offset_pc(bus, 1);
-    bus.read_byte(pc)
-}
+use crate::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode, mos::types::Flag};
+use crate::utils::{self, join_bytes, page_cross_sum, split_bytes};
 
 // Addressing Modes
 
@@ -62,7 +58,7 @@ fn ga_relative<T : Bus>(bus : &mut T) -> u16 {
     if(page_cross){
         handle_super_addressing(bus);
     }
-    address
+    address + 1
 }
 fn ga_absolute<T : Bus>(bus : &mut T) -> u16 {
     let lsb_address = offset_pc(bus, 1);
@@ -130,6 +126,12 @@ fn ga_indirect_y<T : Bus>(bus : &mut T) -> u16 {
     }
     address
 }
+
+pub fn fetch<T : Bus>(bus : &mut T) -> u8 {
+    let pc = offset_pc(bus, 1);
+    bus.read_byte(pc)
+}
+
 
 pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
 {
@@ -587,7 +589,7 @@ pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
                 },        
         0xBA => {
                     update_cycles(bus, 2);
-                    op_txs(bus, AddrMode::Implicit);
+                    op_tsx(bus, AddrMode::Implicit);
                 },        
         0xBC => {
                     update_cycles(bus, 4);
@@ -769,8 +771,6 @@ pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
     }
 }
 
-
-
 //fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){}
 //fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){}
 //fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){}
@@ -828,7 +828,7 @@ pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
 //fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){}
 //fn op_undefined<T : Bus>(_bus : &mut T, _address_mode : AddrMode) {}
 
-fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){ // TODO
 	match address_mode {
 		AddrMode::Implicit |
 		AddrMode::Accumulator |
@@ -839,731 +839,391 @@ fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){
 	}
 }
 fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
- 
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let oldacc = get_acc(bus);
+    let acc = get_acc(bus) & byte;
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
+    set_acc(bus, acc);
 }
 fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Accumulator => { // Special Case
-		}
-        _ => {
-        } // END
-	}
+    match address_mode {
+       AddrMode::Accumulator => {
+           let byte = get_acc(bus);
+           let shifted_byte = byte << 1;
+           set_flag(bus, Flag::Carry, utils::b7(byte));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           set_acc(bus, shifted_byte);
+       } 
+       _ => {
+           let address = get_address(bus, address_mode);
+           let byte = bus.read_byte(address);
+           let shifted_byte = byte << 1;
+           set_flag(bus, Flag::Carry, utils::b7(byte));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           bus.write_byte(address, shifted_byte);
+       }
+    };
 }
 fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
+    let carry_flag = get_flag(bus, Flag::Carry);
+    if(carry_flag){
+        offset_pc(bus, 1);
+    }
+    else {
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
 }
 fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
+    let carry_flag = get_flag(bus, Flag::Carry);
+    if(carry_flag){
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
+    else {
+        offset_pc(bus, 1);
+    }
 
 }
 fn op_beq<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
+    let zero_flag = get_flag(bus, Flag::Zero);
+    if(zero_flag){
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
+    else {
+        offset_pc(bus, 1);
+    }
 
 }
 fn op_bit<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let bit = byte & get_acc(bus);
+    set_flag(bus, Flag::Zero, bit == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
+    set_flag(bus, Flag::Overflow, utils::b6(byte));
 }
 fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
-
+    let negative_flag = get_flag(bus, Flag::Negative);
+    if(negative_flag){
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
+    else {
+        offset_pc(bus, 1);
+    }
 }
 fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
-
+    let zero_flag = get_flag(bus, Flag::Zero);
+    if(zero_flag){
+        offset_pc(bus, 1);
+    }
+    else {
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
 }
 fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
-
+    let negative_flag = get_flag(bus, Flag::Negative);
+    if(negative_flag){
+        offset_pc(bus, 1);
+    }
+    else {
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
 }
 fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    let pc = get_pc(bus);
+    let (pcmb, pclb) = utils::split_bytes(pc + 1);
+    let ps = utils::p4(get_ps(bus), true);
+    write_to_stack(bus, pcmb);
+    write_to_stack(bus, pclb);
+    write_to_stack(bus, ps);
+    let irq_lsb = bus.read_byte(0xFFFE); 
+    let irq_msb = bus.read_byte(0xFFFF); 
+    let jump_address = join_bytes(irq_msb, irq_lsb);
+    set_pc(bus, jump_address);
+    set_flag(bus, Flag::InterruptDisable, true);
 
 }
 fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
-
+    let overflow_flag = get_flag(bus, Flag::Overflow);
+    if(overflow_flag){
+        offset_pc(bus, 1);
+    }
+    else {
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
 }
 fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Relative => { // Special Case
-		} // END
-	}
-
+    let overflow_flag = get_flag(bus, Flag::Overflow);
+    if(overflow_flag){
+        update_cycles(bus, 1);
+        set_super_instruction(bus, true);
+        let address = get_address(bus, address_mode);
+        set_pc(bus, address);
+    }
+    else {
+        offset_pc(bus, 1);
+    }
 }
 fn op_clc<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::Carry, false)
 }
 fn op_cld<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::DecimalMode, false)
 }
 fn op_cli<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::InterruptDisable, false)
 }
 fn op_clv<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::Overflow, false)
 }
 fn op_cmp<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let acc = get_acc(bus);
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let difference = acc - byte;
+    set_flag(bus, Flag::Zero, difference == 0);
+    set_flag(bus, Flag::Carry, acc >= byte);
+    set_flag(bus, Flag::Negative, utils::b7(difference));
 }
 fn op_cpx<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let idx = get_idx(bus);
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let difference = idx - byte;
+    set_flag(bus, Flag::Zero, difference == 0);
+    set_flag(bus, Flag::Carry, idx >= byte);
+    set_flag(bus, Flag::Negative, utils::b7(difference));
 }
 fn op_cpy<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let idy = get_idy(bus);
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let difference = idy - byte;
+    set_flag(bus, Flag::Zero, difference == 0);
+    set_flag(bus, Flag::Carry, idy >= byte);
+    set_flag(bus, Flag::Negative, utils::b7(difference));
 }
 fn op_dec<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address) - 1;
+    bus.write_byte(address, byte);
+    set_flag(bus, Flag::Zero, byte == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
 }
 fn op_dex<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let idx = get_idx(bus) - 1;
+    set_idx(bus, idx);
+    set_flag(bus, Flag::Zero, idx == 0);
+    set_flag(bus, Flag::Negative, utils::b7(idx));
 }
 fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let idy = get_idy(bus) - 1;
+    set_idy(bus, idy);
+    set_flag(bus, Flag::Zero, idy == 0);
+    set_flag(bus, Flag::Negative, utils::b7(idy));
 }
 fn op_eor<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let oldacc = get_acc(bus);
+    let acc = get_acc(bus) ^ byte;
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
+    set_acc(bus, acc);
 }
 fn op_inc<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address) + 1;
+    bus.write_byte(address, byte);
+    set_flag(bus, Flag::Zero, byte == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
 }
 fn op_inx<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let idx = get_idx(bus) + 1;
+    set_idx(bus, idx);
+    set_flag(bus, Flag::Zero, idx == 0);
+    set_flag(bus, Flag::Negative, utils::b7(idx));
 }
 fn op_iny<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let idy = get_idy(bus) + 1;
+    set_idy(bus, idy);
+    set_flag(bus, Flag::Zero, idy == 0);
+    set_flag(bus, Flag::Negative, utils::b7(idy));
 }
 fn op_jmp<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
+    let address = get_address(bus, address_mode);
+    set_pc(bus, address);
 }
 fn op_jsr<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
-
-
+    let pc = get_pc(bus);
+    let (msb, lsb) = split_bytes(pc + 1);
+    write_to_stack(bus, msb);
+    let address = get_address(bus, address_mode); // You might feel tempted to perform both stack writes continuously. Don't.
+    write_to_stack(bus, lsb);
+    set_pc(bus, address);
 }
 fn op_lda<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    set_acc(bus, byte);
+    set_flag(bus, Flag::Zero, byte == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
 }
 fn op_ldx<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageX |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    set_idx(bus, byte);
+    set_flag(bus, Flag::Zero, byte == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
 }
 fn op_ldy<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    set_idy(bus, byte);
+    set_flag(bus, Flag::Zero, byte == 0);
+    set_flag(bus, Flag::Negative, utils::b7(byte));
 }
 fn op_lsr<T : Bus>(bus : &mut T, address_mode : AddrMode){
 	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Accumulator => { // Special Case
-		}
-        _ => {} // END
-	}
+       AddrMode::Accumulator => {
+           let byte = get_acc(bus);
+           let shifted_byte = byte >> 1;
+           set_flag(bus, Flag::Carry, utils::b0(byte));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           set_acc(bus, shifted_byte);
+       } 
+       _ => {
+           let address = get_address(bus, address_mode);
+           let byte = bus.read_byte(address);
+           let shifted_byte = byte >> 1;
+           set_flag(bus, Flag::Carry, utils::b0(byte));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           bus.write_byte(address, shifted_byte);
+       }
+    };
 }
-fn op_nop<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-        AddrMode::Implicit => { // Special Case
-        } // END
-    }
-}
+fn op_nop<T : Bus>(_bus : &mut T, _address_mode : AddrMode){}
 fn op_ora<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
+    let address = get_address(bus, address_mode);
+    let byte = bus.read_byte(address);
+    let oldacc = get_acc(bus);
+    let acc = get_acc(bus) | byte;
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
+    set_acc(bus, acc);
 }
 fn op_pha<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let acc = get_acc(bus);
+    write_to_stack(bus, acc);
 }
 fn op_php<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let ps = get_ps(bus);
+    write_to_stack(bus, utils::p4(ps, true));
 }
 fn op_pla<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let acc = read_from_stack(bus);
+    set_acc(bus, acc);
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
 }
 fn op_plp<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let mut ps = read_from_stack(bus);
+    utils::s5(&mut ps, true);
+    utils::s4(&mut ps, false);
+    set_ps(bus, ps);
 }
 fn op_rol<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Accumulator => { // Special Case
-		}
-        _ => {
-        } // END
-	}
+    match address_mode {
+       AddrMode::Accumulator => {
+           let acc = get_acc(bus);
+           let mut shifted_acc = acc << 1;
+           utils::s0(&mut shifted_acc, get_flag(bus, Flag::Carry));
+           set_flag(bus, Flag::Zero, shifted_acc == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_acc));
+           set_flag(bus, Flag::Carry, utils::b7(acc));
+           set_acc(bus, shifted_acc);
+       } 
+       _ => {
+           let address = get_address(bus, address_mode);
+           let byte = bus.read_byte(address);
+           let mut shifted_byte = byte << 1;
+           utils::s0(&mut shifted_byte, get_flag(bus, Flag::Carry));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           set_flag(bus, Flag::Carry, utils::b7(byte));
+           bus.write_byte(address, shifted_byte);
+       }
+    }
 }
 fn op_ror<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Accumulator => { // Special Case
-		}
-        _ => {
-        } // END
-
-	}
-
+    match address_mode {
+       AddrMode::Accumulator => {
+           let acc = get_acc(bus);
+           let mut shifted_acc = acc >> 1;
+           utils::s7(&mut shifted_acc, get_flag(bus, Flag::Carry));
+           set_flag(bus, Flag::Zero, shifted_acc == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_acc));
+           set_flag(bus, Flag::Carry, utils::b0(acc));
+           set_acc(bus, shifted_acc);
+       } 
+       _ => {
+           let address = get_address(bus, address_mode);
+           let byte = bus.read_byte(address);
+           let mut shifted_byte = byte >> 1;
+           utils::s7(&mut shifted_byte, get_flag(bus, Flag::Carry));
+           set_flag(bus, Flag::Zero, shifted_byte == 0);
+           set_flag(bus, Flag::Negative, utils::b7(shifted_byte));
+           set_flag(bus, Flag::Carry, utils::b0(byte));
+           bus.write_byte(address, shifted_byte);
+       }
+    }
 }
 fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    let mut ps = read_from_stack(bus);
+    utils::s5(&mut ps, true);
+    utils::s4(&mut ps, false);
 
+    let pclsb = read_from_stack(bus);
+    let pcmsb = read_from_stack(bus);
+    let pc = utils::join_bytes(pcmsb, pclsb);
+
+    set_ps(bus, ps);
+    set_pc(bus, pc);
 }
 fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    let pclsb = read_from_stack(bus);
+    let pcmsb = read_from_stack(bus);
+    let pc = 1 + utils::join_bytes(pcmsb, pclsb);
 
+    set_pc(bus, pc);
 }
-fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){ // TODO
 	match address_mode {
 		AddrMode::Implicit |
 		AddrMode::Accumulator |
@@ -1574,218 +1234,63 @@ fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){
 	}
 }
 fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::Carry, true);
 }
 fn op_sed<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::DecimalMode, true);
 }
 fn op_sei<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    set_flag(bus, Flag::InterruptDisable, true);
 }
 fn op_sta<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = get_acc(bus);
+    bus.write_byte(address, byte)
 }
 fn op_stx<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageX |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = get_idx(bus);
+    bus.write_byte(address, byte)
 }
 fn op_sty<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		_ => {} // END
-	}
-
-
+    let address = get_address(bus, address_mode);
+    let byte = get_idy(bus);
+    bus.write_byte(address, byte)
 }
 fn op_tax<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let acc = get_acc(bus);
+    set_idx(bus, acc);
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
 }
 fn op_tay<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let acc = get_acc(bus);
+    set_idy(bus, acc);
+    set_flag(bus, Flag::Zero, acc == 0);
+    set_flag(bus, Flag::Negative, utils::b7(acc));
 }
 fn op_tsx<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let sp = get_sp(bus);
+    set_idx(bus, sp);
+    set_flag(bus, Flag::Zero, sp == 0);
+    set_flag(bus, Flag::Negative, utils::b7(sp));
 }
 fn op_txa<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+    let idx = get_idx(bus);
+    set_acc(bus, idx);
+    set_flag(bus, Flag::Zero, idx == 0);
+    set_flag(bus, Flag::Negative, utils::b7(idx));
 }
 
 fn op_txs<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
-
+    let idx = get_idx(bus);
+    set_sp(bus, idx);
 }
 fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){
-	match address_mode {
-		AddrMode::Accumulator |
-		AddrMode::Immediate |
-		AddrMode::Zeropage |
-		AddrMode::ZeropageX |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Absolute |
-		AddrMode::AbsoluteX |
-		AddrMode::AbsoluteY |
-		AddrMode::Indirect |
-		AddrMode::IndirectX |
-		AddrMode::IndirectY => {} // Non-supported addressing mode
-		AddrMode::Implicit => { // Special Case
-		} // END
-	}
+   let idy = get_idy(bus);
+   set_acc(bus, idy);
+   set_flag(bus, Flag::Zero, idy == 0);
+   set_flag(bus, Flag::Negative, utils::b7(idy));
 }
 
 fn op_undefined<T : Bus>(bus : &mut T, address_mode : AddrMode){}

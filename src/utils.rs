@@ -18,6 +18,17 @@ pub fn s5(i : &mut u8, v : bool) { if v { *i |= 0x20 } else { *i &= !0x20 } }
 pub fn s6(i : &mut u8, v : bool) { if v { *i |= 0x40 } else { *i &= !0x40 } }
 pub fn s7(i : &mut u8, v : bool) { if v { *i |= 0x80 } else { *i &= !0x80 } }
 
+
+pub fn p0(i : u8, v : bool) -> u8 { if v { i | 0x01 } else { i & !0x01 } }
+pub fn p1(i : u8, v : bool) -> u8 { if v { i | 0x02 } else { i & !0x02 } }
+pub fn p2(i : u8, v : bool) -> u8 { if v { i | 0x04 } else { i & !0x04 } }
+pub fn p3(i : u8, v : bool) -> u8 { if v { i | 0x08 } else { i & !0x08 } }
+pub fn p4(i : u8, v : bool) -> u8 { if v { i | 0x10 } else { i & !0x10 } }
+pub fn p5(i : u8, v : bool) -> u8 { if v { i | 0x20 } else { i & !0x20 } }
+pub fn p6(i : u8, v : bool) -> u8 { if v { i | 0x40 } else { i & !0x40 } }
+pub fn p7(i : u8, v : bool) -> u8 { if v { i | 0x80 } else { i & !0x80 } }
+
+
 pub fn B0 (i : u16) -> bool { i & 0x0001 > 0 }
 pub fn B1 (i : u16) -> bool { i & 0x0002 > 0 }
 pub fn B2 (i : u16) -> bool { i & 0x0004 > 0 }
@@ -52,9 +63,26 @@ pub fn S13(i : &mut u16, v : bool) { if v { *i |= 0x2000 } else { *i &= !0x2000 
 pub fn S14(i : &mut u16, v : bool) { if v { *i |= 0x4000 } else { *i &= !0x4000 } }
 pub fn S15(i : &mut u16, v : bool) { if v { *i |= 0x8000 } else { *i &= !0x8000 } }
 
+pub fn P0 (i : u16, v : bool) -> u16 { if v { i | 0x0001 } else { i & !0x0001 } }
+pub fn P1 (i : u16, v : bool) -> u16 { if v { i | 0x0002 } else { i & !0x0002 } }
+pub fn P2 (i : u16, v : bool) -> u16 { if v { i | 0x0004 } else { i & !0x0004 } }
+pub fn P3 (i : u16, v : bool) -> u16 { if v { i | 0x0008 } else { i & !0x0008 } }
+pub fn P4 (i : u16, v : bool) -> u16 { if v { i | 0x0010 } else { i & !0x0010 } }
+pub fn P5 (i : u16, v : bool) -> u16 { if v { i | 0x0020 } else { i & !0x0020 } }
+pub fn P6 (i : u16, v : bool) -> u16 { if v { i | 0x0040 } else { i & !0x0040 } }
+pub fn P7 (i : u16, v : bool) -> u16 { if v { i | 0x0080 } else { i & !0x0080 } }
+pub fn P8 (i : u16, v : bool) -> u16 { if v { i | 0x0100 } else { i & !0x0100 } }
+pub fn P9 (i : u16, v : bool) -> u16 { if v { i | 0x0200 } else { i & !0x0200 } }
+pub fn P10(i : u16, v : bool) -> u16 { if v { i | 0x0400 } else { i & !0x0400 } }
+pub fn P11(i : u16, v : bool) -> u16 { if v { i | 0x0800 } else { i & !0x0800 } }
+pub fn P12(i : u16, v : bool) -> u16 { if v { i | 0x1000 } else { i & !0x1000 } }
+pub fn P13(i : u16, v : bool) -> u16 { if v { i | 0x2000 } else { i & !0x2000 } }
+pub fn P14(i : u16, v : bool) -> u16 { if v { i | 0x4000 } else { i & !0x4000 } }
+pub fn P15(i : u16, v : bool) -> u16 { if v { i | 0x8000 } else { i & !0x8000 } }
+
 
 pub fn join_bytes(msb : u8, lsb : u8) -> u16 {
-    (msb as u16) << 8 + (lsb as u16)
+    (msb as u16) << 8 | (lsb as u16)
 }
 pub fn split_bytes(x : u16) -> (u8, u8) {
     let lsb = x & 0x00FF;
