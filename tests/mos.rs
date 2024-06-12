@@ -2,8 +2,9 @@
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::fs::File;
+use std::fmt;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 struct TomHarte {
     pc : u16,
     s : u8,
@@ -14,6 +15,23 @@ struct TomHarte {
     ram : Vec<(u16, u8)>
 }
 
+impl fmt::Debug for TomHarte {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TomHarte:")?;
+        write!(f, "\n\tPC: {:04X}", self.pc)?;
+        write!(f, "\n\tS: {:04X}", self.s)?;
+        write!(f, "\n\tA: {:04X}", self.a)?;
+        write!(f, "\n\tX: {:04X}", self.x)?;
+        write!(f, "\n\tY: {:04X}", self.y)?;
+        write!(f, "\n\tPS: {:08b}", self.p)?;
+        write!(f, "\n\t")?;
+        for (a, b) in &self.ram {
+            write!(f, "({:04X}, {:02X})", a, b)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Cycle {
     address : u16,
@@ -21,12 +39,27 @@ struct Cycle {
     action : String
 }
 
+#[derive(Serialize, Deserialize)]
+struct Cycles(Vec<Cycle>);
+
+impl fmt::Debug for Cycles {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for cycle in &self.0 {
+            write!(f, "\n{} address {:04X} ({}) and got {:02X} ({})", cycle.action, cycle.address, cycle.address, cycle.byte, cycle.byte)?;
+        }
+        Ok(())
+    }
+}
+
+
+
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Test {
     name : String,
     initial_state : TomHarte,
     final_state : TomHarte,
-    cycles : Vec<Cycle>
+    cycles : Cycles
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,14 +67,20 @@ struct Tests(Vec<Test>);
 
 struct SimpleBus {
     cpu : coral::mos::Mos,
-    ram : [u8; 0x10000]
+    ram : [u8; 0x10000],
+    cycles : Cycles
 }
 
 impl coral::mos::Bus for SimpleBus {
     fn read_byte(&mut self, address: u16) -> u8 {
-        return self.ram[address as usize];
+        let byte = self.ram[address as usize];
+        let action = "read".to_string();
+        self.cycles.0.push(Cycle {address, byte, action});
+        return byte;
     }
     fn write_byte(&mut self, address: u16, byte: u8) {
+        let action = "write".to_string();
+        self.cycles.0.push(Cycle {address, byte, action});
         self.ram[address as usize] = byte;
     }
     fn peek_byte(&self, address: u16) -> u8 {
@@ -80,7 +119,7 @@ fn mos_from_tom(tom : &TomHarte) -> coral::mos::Mos {
     return cpu;
 }
 
-fn to_tom(simple : SimpleBus) -> TomHarte{
+fn to_tom(simple : &SimpleBus) -> TomHarte{
     let r : Vec<(u16, u8)> = vec![];
     let cpu = simple.cpu;
     let mut tom = TomHarte{ pc : cpu.registers.pc, s : cpu.registers.sp, a : cpu.registers.acc, x : cpu.registers.idx, y : cpu.registers.idy, p : cpu.registers.ps, ram : r};
@@ -119,8 +158,9 @@ fn from_tom(tom: &TomHarte) -> SimpleBus
 {
     let c = mos_from_tom(tom);
     let r = ram_from_tom(tom);
+    let cyc : Cycles = Cycles(vec![]);
 
-    let simple = SimpleBus{cpu : c, ram : r};
+    let simple = SimpleBus{cpu : c, ram : r, cycles : cyc};
     return simple;
 }
 
@@ -129,7 +169,19 @@ fn test(t : Test){
     let mut simple = from_tom(&initial_state);
     coral::mos::tick(&mut simple);
     let result = compare(&t.final_state, &simple);
-    assert!(result, "\nName: {}\n\nInitial State:\n{:?}\n\nFinal State:\n{:?}\nMOS:\n\n{:?}", t.name, initial_state, t.final_state,  to_tom(simple));
+    let prediction = to_tom(&simple);
+
+    let mut assertion_message = String::new();
+    
+    assertion_message.push_str(&format!("\nName: {}\n", t.name));
+    assertion_message.push_str(&format!("\nInitial State:\n{:?}\n", initial_state));
+    assertion_message.push_str(&format!("\nFinal State:\n{:?}\n", t.final_state));
+    assertion_message.push_str(&format!("\nMOS:\n{:?}\n", prediction));
+    assertion_message.push_str(&format!("\nCycles: {:?}\n", t.cycles));
+    assertion_message.push_str(&format!("\nMOS Cycles: {:?}\n", simple.cycles));
+
+    assert!(result, "{}", assertion_message);
+
 }
 
 fn test_opcode(opcode : u8){
