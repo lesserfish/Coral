@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use coral::mos::set_decimal_enabled;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::fs::File;
@@ -159,8 +160,8 @@ fn from_tom(tom: &TomHarte) -> SimpleBus
     let c = mos_from_tom(tom);
     let r = ram_from_tom(tom);
     let cyc : Cycles = Cycles(vec![]);
-
-    let simple = SimpleBus{cpu : c, ram : r, cycles : cyc};
+    let mut simple = SimpleBus{cpu : c, ram : r, cycles : cyc};
+    set_decimal_enabled(&mut simple, true);
     return simple;
 }
 
