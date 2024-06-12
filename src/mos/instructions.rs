@@ -1260,15 +1260,55 @@ fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){
 
     set_pc(bus, pc);
 }
+
+fn sbc_overflow(x : bool, y : bool, r : bool) -> bool {
+    (x ^ r) && !(y ^ r)
+}
 fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){ // TODO
-	match address_mode {
-		AddrMode::Implicit |
-		AddrMode::Accumulator |
-		AddrMode::ZeropageY |
-		AddrMode::Relative |
-		AddrMode::Indirect => {} // Non-supported addressing mode
-		_ => {} // END
-	}
+    let address = get_address(bus, address_mode);
+
+    let acc = get_acc(bus) as u16;
+    let byte = bus.read_byte(address) as u16;
+    let carry = if get_flag(bus, Flag::Carry) {1} else {0} as u16;
+
+    let decimal_mode = get_flag(bus, Flag::DecimalMode);
+    let decimal_enabled = get_decimal_enabled(bus);
+
+    if(decimal_mode && decimal_enabled){
+        let a1 = acc & 0x0F;   // First digit of the ACC
+        let b1 = byte & 0x0F;  // First digit of the Byte
+        let c1 = carry ^ 0x1;  // Carry for the first digit sum
+        let s1 = a1 - b1 - c1; // First digit subtraction   
+        let o1 = s1 > 0xF;   //Whether or not an overflow happened in digit 1                         
+
+        let a2 = acc & 0xF0;   // Second digit of the ACC
+        let b2 = byte & 0xF0;  // Second digit of the Byte
+        let c2 = if o1 { 0xFFF0 } else { 0x00 } as u16; // Overflow for the second digit sum
+        let s2 = a2 - b2 + c2; // Second digit subtraction
+        let o2 = s2 > 0xFF;  // Whether or not an overflow happened in digit 2
+
+        let lsd = if o1 { (s1 - 0x06) & 0x0F } else {s1 & 0x0F}; // Least significant digit of the subtraction
+        let msd = if o2 { (s2 - 0x60) & 0xF0 } else {s2 & 0xF0}; // Most significant digit of the subtraction
+        let sum = msd + lsd; // The updated acc
+        
+        set_flag(bus, Flag::Carry, !o2);
+        set_flag(bus, Flag::Zero, (acc + (byte ^ 0xFF) + carry) & 0xFF == 0);
+        set_flag(bus, Flag::Negative, utils::B7(s2));
+        set_flag(bus, Flag::Overflow, sbc_overflow(utils::B7(acc), utils::B7(byte), utils::B7(s2)));
+
+        set_acc(bus, sum as u8);
+
+    }
+    else {
+        let byte = byte ^ 0x00FF;
+        let sum = acc + byte + carry;
+        set_flag(bus, Flag::Carry, sum > 0xFF);
+        set_flag(bus, Flag::Zero, sum & 0xFF == 0);
+        set_flag(bus, Flag::Negative, utils::B7(sum));
+        set_flag(bus, Flag::Overflow, adc_overflow(utils::B7(acc), utils::B7(byte), utils::B7(sum)));
+        set_acc(bus, sum as u8);
+    }
+
 }
 fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){
     set_flag(bus, Flag::Carry, true);
