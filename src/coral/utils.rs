@@ -1,4 +1,6 @@
+#![allow(unused)]
 #![allow(non_snake_case)]
+
 pub fn b0(i : u8) -> bool { i & 0x01 > 0 }
 pub fn b1(i : u8) -> bool { i & 0x02 > 0 }
 pub fn b2(i : u8) -> bool { i & 0x04 > 0 }
