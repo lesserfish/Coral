@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use crate::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode, mos::types::Flag};
-use crate::utils::{self, join_bytes, page_cross_sum, split_bytes};
+use crate::coral::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode, mos::types::Flag};
+use crate::coral::utils::{self, join_bytes, page_cross_sum, split_bytes};
 
 // Addressing Modes
 

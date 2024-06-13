@@ -5,6 +5,7 @@ edition = "2021"
 include = ["/src"]
 
 [dependencies]
+sdl2 = "0.36.0"
 
 [dev-dependencies]
 serde_json = "1.0"

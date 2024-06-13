@@ -1,6 +1,6 @@
-use crate::utils;
-use crate::mos::types::*;
-use crate::mos::instructions::*;
+use crate::coral::utils;
+use crate::coral::mos::types::*;
+use crate::coral::mos::instructions::*;
 
 
 //  Some quick words in naming conventions:

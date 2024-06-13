@@ -1,5 +1,5 @@
-use crate::cartridge::mapper::types::*;
-use crate::cartridge::types;
+use crate::coral::cartridge::mapper::types::*;
+use crate::coral::cartridge::types;
 
 
 pub struct Mapper0 {
