@@ -4,7 +4,7 @@
 - [X] Imeplement the automated tests and fail them all
 - [X] Implement the core CPU methods (setters / getters and fetchers, readbyte, writebyte, and so on)
 - [X] Implement the CPU instructions. Pass all tests
-- [ ] Create the INES Loader
+- [X] Create the INES Loader
 - [ ] Create a Memory data type
 - [ ] Create a Display data type
 - [ ] Create a BUS data type
