@@ -1,4 +1,4 @@
-use crate::mos::types::AddrMode;
+use crate::coral::mos::types::AddrMode;
 
 pub fn opinfo(opcode : u8) -> (&'static str, AddrMode){
     match opcode {

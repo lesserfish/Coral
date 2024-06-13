@@ -3,9 +3,9 @@ use std::fs::File;
 use std::io::Error;
 use std::io::ErrorKind;
 
-use crate::utils;
-use crate::cartridge::types::*;
-use crate::cartridge::mapper;
+use crate::coral::utils;
+use crate::coral::cartridge::types::*;
+use crate::coral::cartridge::mapper;
 
 fn new_cartridge() -> Cartridge {
     Cartridge {  header: Header 

@@ -5,7 +5,7 @@ use std::io;
 use std::io::Error;
 use std::io::ErrorKind;
 
-use crate::cartridge as Cartridge;
+use crate::coral::cartridge as Cartridge;
 
 
 pub fn choose_mapper(cartridge : &mut Cartridge::Cartridge) -> io::Result<()>{
