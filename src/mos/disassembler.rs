@@ -1,6 +1,5 @@
 use crate::mos::types::AddrMode;
 
-
 pub fn opinfo(opcode : u8) -> (&'static str, AddrMode){
     match opcode {
         0x00 => ("BRK", AddrMode::Implicit),
