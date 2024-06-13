@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::coral::{mos::types::Bus, mos::primitive::*, mos::types::AddrMode, mos::types::Flag};
 use crate::coral::utils::{self, join_bytes, page_cross_sum, split_bytes};
 
@@ -24,7 +22,7 @@ fn get_address<T : Bus>(bus : &mut T, address_mode : AddrMode) -> u16 {
 
 fn handle_super_addressing<T : Bus>(bus : &mut T){
     let super_instruction = get_super_instruction(bus);
-    if(super_instruction){
+    if super_instruction {
         update_cycles(bus, 1);
     }
 }
@@ -55,7 +53,7 @@ fn ga_relative<T : Bus>(bus : &mut T) -> u16 {
     let offset = bus.read_byte(pc) as u16;
     let relative_offset = if utils::B7(offset) {0xFF00 | offset} else {offset};
     let (address, page_cross) = utils::page_cross_sum(pc, relative_offset);
-    if(page_cross){
+    if page_cross{
         handle_super_addressing(bus);
     }
     address + 1
@@ -74,7 +72,7 @@ fn ga_absolute_x<T : Bus>(bus : &mut T) -> u16 {
     let msb = bus.read_byte(msb_address);
     let x = get_idx(bus);
     let (address, page_cross) = utils::page_cross_sum(join_bytes(msb, lsb), join_bytes(0x00, x));
-    if(page_cross){
+    if page_cross{
         handle_super_addressing(bus);
     }
     address
@@ -86,7 +84,7 @@ fn ga_absolute_y<T : Bus>(bus : &mut T) -> u16 {
     let msb = bus.read_byte(msb_address);
     let y = get_idy(bus);
     let (address, page_cross) = utils::page_cross_sum(join_bytes(msb, lsb), join_bytes(0x00, y));
-    if(page_cross){
+    if page_cross{
         handle_super_addressing(bus);
     }
     address
@@ -121,7 +119,7 @@ fn ga_indirect_y<T : Bus>(bus : &mut T) -> u16 {
     let base_address = join_bytes(base_msb, base_lsb);
     let y = get_idy(bus);
     let (address, page_cross) = page_cross_sum(base_address, y as u16);
-    if(page_cross){
+    if page_cross{
         handle_super_addressing(bus);
     }
     address
@@ -842,7 +840,7 @@ fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let decimal_mode = get_flag(bus, Flag::DecimalMode);
     let decimal_enabled = get_decimal_enabled(bus);
 
-    if(decimal_mode && decimal_enabled){
+    if decimal_mode && decimal_enabled{
         let a1 = acc & 0x0F;   // First digit of the ACC
         let b1 = byte & 0x0F;  // First digit of the Byte
         let c1 = carry;        // Carry for the first digit sum
@@ -878,7 +876,6 @@ fn op_adc<T : Bus>(bus : &mut T, address_mode : AddrMode){
 fn op_and<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let address = get_address(bus, address_mode);
     let byte = bus.read_byte(address);
-    let oldacc = get_acc(bus);
     let acc = get_acc(bus) & byte;
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
@@ -907,7 +904,7 @@ fn op_asl<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let carry_flag = get_flag(bus, Flag::Carry);
-    if(carry_flag){
+    if carry_flag{
         offset_pc(bus, 1);
     }
     else {
@@ -919,7 +916,7 @@ fn op_bcc<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let carry_flag = get_flag(bus, Flag::Carry);
-    if(carry_flag){
+    if carry_flag{
         update_cycles(bus, 1);
         set_super_instruction(bus, true);
         let address = get_address(bus, address_mode);
@@ -932,7 +929,7 @@ fn op_bcs<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_beq<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let zero_flag = get_flag(bus, Flag::Zero);
-    if(zero_flag){
+    if zero_flag{
         update_cycles(bus, 1);
         set_super_instruction(bus, true);
         let address = get_address(bus, address_mode);
@@ -953,7 +950,7 @@ fn op_bit<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let negative_flag = get_flag(bus, Flag::Negative);
-    if(negative_flag){
+    if negative_flag{
         update_cycles(bus, 1);
         set_super_instruction(bus, true);
         let address = get_address(bus, address_mode);
@@ -965,7 +962,7 @@ fn op_bmi<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let zero_flag = get_flag(bus, Flag::Zero);
-    if(zero_flag){
+    if zero_flag{
         offset_pc(bus, 1);
     }
     else {
@@ -977,7 +974,7 @@ fn op_bne<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let negative_flag = get_flag(bus, Flag::Negative);
-    if(negative_flag){
+    if negative_flag{
         offset_pc(bus, 1);
     }
     else {
@@ -987,7 +984,7 @@ fn op_bpl<T : Bus>(bus : &mut T, address_mode : AddrMode){
         set_pc(bus, address);
     }
 }
-fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_brk<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let pc = get_pc(bus);
     let (pcmb, pclb) = utils::split_bytes(pc + 1);
     let ps = utils::p4(get_ps(bus), true);
@@ -1003,7 +1000,7 @@ fn op_brk<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let overflow_flag = get_flag(bus, Flag::Overflow);
-    if(overflow_flag){
+    if overflow_flag{
         offset_pc(bus, 1);
     }
     else {
@@ -1015,7 +1012,7 @@ fn op_bvc<T : Bus>(bus : &mut T, address_mode : AddrMode){
 }
 fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let overflow_flag = get_flag(bus, Flag::Overflow);
-    if(overflow_flag){
+    if overflow_flag{
         update_cycles(bus, 1);
         set_super_instruction(bus, true);
         let address = get_address(bus, address_mode);
@@ -1025,16 +1022,16 @@ fn op_bvs<T : Bus>(bus : &mut T, address_mode : AddrMode){
         offset_pc(bus, 1);
     }
 }
-fn op_clc<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_clc<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::Carry, false)
 }
-fn op_cld<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_cld<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::DecimalMode, false)
 }
-fn op_cli<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_cli<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::InterruptDisable, false)
 }
-fn op_clv<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_clv<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::Overflow, false)
 }
 fn op_cmp<T : Bus>(bus : &mut T, address_mode : AddrMode){
@@ -1071,13 +1068,13 @@ fn op_dec<T : Bus>(bus : &mut T, address_mode : AddrMode){
     set_flag(bus, Flag::Zero, byte == 0);
     set_flag(bus, Flag::Negative, utils::b7(byte));
 }
-fn op_dex<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_dex<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idx = get_idx(bus) - 1;
     set_idx(bus, idx);
     set_flag(bus, Flag::Zero, idx == 0);
     set_flag(bus, Flag::Negative, utils::b7(idx));
 }
-fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_dey<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idy = get_idy(bus) - 1;
     set_idy(bus, idy);
     set_flag(bus, Flag::Zero, idy == 0);
@@ -1086,7 +1083,6 @@ fn op_dey<T : Bus>(bus : &mut T, address_mode : AddrMode){
 fn op_eor<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let address = get_address(bus, address_mode);
     let byte = bus.read_byte(address);
-    let oldacc = get_acc(bus);
     let acc = get_acc(bus) ^ byte;
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
@@ -1099,13 +1095,13 @@ fn op_inc<T : Bus>(bus : &mut T, address_mode : AddrMode){
     set_flag(bus, Flag::Zero, byte == 0);
     set_flag(bus, Flag::Negative, utils::b7(byte));
 }
-fn op_inx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_inx<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idx = get_idx(bus) + 1;
     set_idx(bus, idx);
     set_flag(bus, Flag::Zero, idx == 0);
     set_flag(bus, Flag::Negative, utils::b7(idx));
 }
-fn op_iny<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_iny<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idy = get_idy(bus) + 1;
     set_idy(bus, idy);
     set_flag(bus, Flag::Zero, idy == 0);
@@ -1169,27 +1165,26 @@ fn op_nop<T : Bus>(_bus : &mut T, _address_mode : AddrMode){}
 fn op_ora<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let address = get_address(bus, address_mode);
     let byte = bus.read_byte(address);
-    let oldacc = get_acc(bus);
     let acc = get_acc(bus) | byte;
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
     set_acc(bus, acc);
 }
-fn op_pha<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_pha<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let acc = get_acc(bus);
     write_to_stack(bus, acc);
 }
-fn op_php<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_php<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let ps = get_ps(bus);
     write_to_stack(bus, utils::p4(ps, true));
 }
-fn op_pla<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_pla<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let acc = read_from_stack(bus);
     set_acc(bus, acc);
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
 }
-fn op_plp<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_plp<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let mut ps = read_from_stack(bus);
     utils::s5(&mut ps, true);
     utils::s4(&mut ps, false);
@@ -1241,7 +1236,7 @@ fn op_ror<T : Bus>(bus : &mut T, address_mode : AddrMode){
        }
     }
 }
-fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_rti<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let mut ps = read_from_stack(bus);
     utils::s5(&mut ps, true);
     utils::s4(&mut ps, false);
@@ -1253,7 +1248,7 @@ fn op_rti<T : Bus>(bus : &mut T, address_mode : AddrMode){
     set_ps(bus, ps);
     set_pc(bus, pc);
 }
-fn op_rts<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_rts<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let pclsb = read_from_stack(bus);
     let pcmsb = read_from_stack(bus);
     let pc = 1 + utils::join_bytes(pcmsb, pclsb);
@@ -1274,7 +1269,7 @@ fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){ // TODO
     let decimal_mode = get_flag(bus, Flag::DecimalMode);
     let decimal_enabled = get_decimal_enabled(bus);
 
-    if(decimal_mode && decimal_enabled){
+    if decimal_mode && decimal_enabled{
         let a1 = acc & 0x0F;   // First digit of the ACC
         let b1 = byte & 0x0F;  // First digit of the Byte
         let c1 = carry ^ 0x1;  // Carry for the first digit sum
@@ -1310,13 +1305,13 @@ fn op_sbc<T : Bus>(bus : &mut T, address_mode : AddrMode){ // TODO
     }
 
 }
-fn op_sec<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_sec<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::Carry, true);
 }
-fn op_sed<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_sed<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::DecimalMode, true);
 }
-fn op_sei<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_sei<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     set_flag(bus, Flag::InterruptDisable, true);
 }
 fn op_sta<T : Bus>(bus : &mut T, address_mode : AddrMode){
@@ -1334,40 +1329,40 @@ fn op_sty<T : Bus>(bus : &mut T, address_mode : AddrMode){
     let byte = get_idy(bus);
     bus.write_byte(address, byte)
 }
-fn op_tax<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_tax<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let acc = get_acc(bus);
     set_idx(bus, acc);
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
 }
-fn op_tay<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_tay<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let acc = get_acc(bus);
     set_idy(bus, acc);
     set_flag(bus, Flag::Zero, acc == 0);
     set_flag(bus, Flag::Negative, utils::b7(acc));
 }
-fn op_tsx<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_tsx<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let sp = get_sp(bus);
     set_idx(bus, sp);
     set_flag(bus, Flag::Zero, sp == 0);
     set_flag(bus, Flag::Negative, utils::b7(sp));
 }
-fn op_txa<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_txa<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idx = get_idx(bus);
     set_acc(bus, idx);
     set_flag(bus, Flag::Zero, idx == 0);
     set_flag(bus, Flag::Negative, utils::b7(idx));
 }
 
-fn op_txs<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_txs<T : Bus>(bus : &mut T, _address_mode : AddrMode){
     let idx = get_idx(bus);
     set_sp(bus, idx);
 }
-fn op_tya<T : Bus>(bus : &mut T, address_mode : AddrMode){
+fn op_tya<T : Bus>(bus : &mut T, _address_mode : AddrMode){
    let idy = get_idy(bus);
    set_acc(bus, idy);
    set_flag(bus, Flag::Zero, idy == 0);
    set_flag(bus, Flag::Negative, utils::b7(idy));
 }
 
-fn op_undefined<T : Bus>(bus : &mut T, address_mode : AddrMode){}
+fn op_undefined<T : Bus>(_bus : &mut T, _address_mode : AddrMode){}
