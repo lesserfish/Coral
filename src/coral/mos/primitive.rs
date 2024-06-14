@@ -143,25 +143,6 @@ pub fn map_ps<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
     set_ps(bus, f(ps))
 }
 
-// Set If
-pub fn set_pc_if<T : Bus>(bus : &mut T, b : bool, v : u16){
-    if b {bus.fetch_mos().registers.pc = v;}
-}
-pub fn set_sp_if<T : Bus>(bus : &mut T, b : bool, v : u8){
-    if b {bus.fetch_mos().registers.sp = v;}
-}
-pub fn set_acc_if<T : Bus>(bus : &mut T,b : bool, v : u8){
-    if b {bus.fetch_mos().registers.acc = v;}
-}
-pub fn set_idx_if<T : Bus>(bus : &mut T,b : bool, v : u8){
-    if b {bus.fetch_mos().registers.idx = v;}
-}
-pub fn set_idy_if<T : Bus>(bus : &mut T,b : bool, v : u8){
-    if b {bus.fetch_mos().registers.idy = v;}
-}
-pub fn set_ps_if<T : Bus>(bus : &mut T, b : bool, v : u8){
-    if b {bus.fetch_mos().registers.ps = v;}
-}
 
 pub fn offset_pc<T : Bus>(bus : &mut T, v :  i64) -> u16{
     map_pc(bus, |x| -> u16 {x + v as u16})

@@ -5,8 +5,12 @@ pub trait Bus {
     fn set_pixel(&mut self, position : (u16, u16), color : u8);
     fn trigger_nmi(&mut self);
     fn fetch_ppu(&mut self) -> &mut PPU;
+    fn get_ppu(&mut self) -> PPU {
+        *self.fetch_ppu()
+    }
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub struct Registers {
     pub control : u8,
     pub mask : u8,
@@ -18,6 +22,7 @@ pub struct Registers {
     pub write_toggle : bool
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub struct Context {
     pub complete : bool,
     pub scanline : i32,
@@ -26,22 +31,41 @@ pub struct Context {
     pub sprite_0_x : i32,
     pub sprite_0_hit_position : i32
 }
+
+#[derive(Copy, Clone, Debug)] 
+pub enum Priority {
+    Front,
+    Middle,
+    Back,
+    Unset
+}
+
+#[derive(Copy, Clone, Debug)] 
+pub struct PixelInfo {
+    pub color_index : u8,
+    pub palette_index : u8,
+    pub priority : Priority
+}
+
+#[derive(Copy, Clone, Debug)] 
 pub struct PPU {
    pub registers : Registers,
    pub context : Context,
    pub oam_data : [u8; 0xFF],
-   pub bg_buffer : [u8; 32 * 9],
-   pub fg_buffer : [u8; 32 * 8]
+   pub fg_buffer : [PixelInfo; 32 * 8], // 256 pixels
+   pub bg_buffer : [PixelInfo; 33 * 8], // 256 pixels + an additional 8 to accomodate scrolling
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub struct Sprite {
-    pub id : u8,
+    pub id : usize,
     pub y_pos : u8,
     pub tile : u8,
     pub attribute : u8,
     pub x_pos : u8
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum ControlFlag {
     NametableX,
     NametableY,
@@ -53,6 +77,7 @@ pub enum ControlFlag {
     EnableNMI
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum MaskFlag {
     Grayscale,
     RenderBackgroundLeft,
@@ -64,12 +89,14 @@ pub enum MaskFlag {
     EnhanceBlue
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum StatusFlag {
     SpriteOverflow,
     SpriteZeroHit,
     VerticalBlank
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum LoopyFlag {
     CoarseX,
     CoarseY,
@@ -78,8 +105,8 @@ pub enum LoopyFlag {
     FineY
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum SpriteFlag {
-    SpritePalette,
     SpritePriority,
     SpriteHorizontalFlip,
     SpriteVerticalFlip

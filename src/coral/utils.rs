@@ -10,7 +10,6 @@ pub fn b5(i : u8) -> bool { i & 0x20 > 0 }
 pub fn b6(i : u8) -> bool { i & 0x40 > 0 }
 pub fn b7(i : u8) -> bool { i & 0x80 > 0 }
 
-
 pub fn s0(i : &mut u8, v : bool) { if v { *i |= 0x01 } else { *i &= !0x01 } }
 pub fn s1(i : &mut u8, v : bool) { if v { *i |= 0x02 } else { *i &= !0x02 } }
 pub fn s2(i : &mut u8, v : bool) { if v { *i |= 0x04 } else { *i &= !0x04 } }
@@ -19,7 +18,6 @@ pub fn s4(i : &mut u8, v : bool) { if v { *i |= 0x10 } else { *i &= !0x10 } }
 pub fn s5(i : &mut u8, v : bool) { if v { *i |= 0x20 } else { *i &= !0x20 } }
 pub fn s6(i : &mut u8, v : bool) { if v { *i |= 0x40 } else { *i &= !0x40 } }
 pub fn s7(i : &mut u8, v : bool) { if v { *i |= 0x80 } else { *i &= !0x80 } }
-
 
 pub fn p0(i : u8, v : bool) -> u8 { if v { i | 0x01 } else { i & !0x01 } }
 pub fn p1(i : u8, v : bool) -> u8 { if v { i | 0x02 } else { i & !0x02 } }
@@ -30,6 +28,14 @@ pub fn p5(i : u8, v : bool) -> u8 { if v { i | 0x20 } else { i & !0x20 } }
 pub fn p6(i : u8, v : bool) -> u8 { if v { i | 0x40 } else { i & !0x40 } }
 pub fn p7(i : u8, v : bool) -> u8 { if v { i | 0x80 } else { i & !0x80 } }
 
+pub fn t0(i : u8) -> u8 { i & 0x01 }
+pub fn t1(i : u8) -> u8 { i & 0x03 }
+pub fn t2(i : u8) -> u8 { i & 0x07 }
+pub fn t3(i : u8) -> u8 { i & 0x0F }
+pub fn t4(i : u8) -> u8 { i & 0x1F }
+pub fn t5(i : u8) -> u8 { i & 0x3F }
+pub fn t6(i : u8) -> u8 { i & 0x7F }
+pub fn t7(i : u8) -> u8 { i & 0xFF }
 
 pub fn B0 (i : u16) -> bool { i & 0x0001 > 0 }
 pub fn B1 (i : u16) -> bool { i & 0x0002 > 0 }
@@ -82,6 +88,22 @@ pub fn P13(i : u16, v : bool) -> u16 { if v { i | 0x2000 } else { i & !0x2000 } 
 pub fn P14(i : u16, v : bool) -> u16 { if v { i | 0x4000 } else { i & !0x4000 } }
 pub fn P15(i : u16, v : bool) -> u16 { if v { i | 0x8000 } else { i & !0x8000 } }
 
+pub fn T1 (i : u16) -> u16 { i & 0x0001 }
+pub fn T2 (i : u16) -> u16 { i & 0x0003 }
+pub fn T3 (i : u16) -> u16 { i & 0x0007 }
+pub fn T4 (i : u16) -> u16 { i & 0x000F }
+pub fn T5 (i : u16) -> u16 { i & 0x001F }
+pub fn T6 (i : u16) -> u16 { i & 0x003F }
+pub fn T7 (i : u16) -> u16 { i & 0x007F }
+pub fn T8 (i : u16) -> u16 { i & 0x00FF }
+pub fn T9 (i : u16) -> u16 { i & 0x01FF }
+pub fn T10(i : u16) -> u16 { i & 0x03FF }
+pub fn T11(i : u16) -> u16 { i & 0x07FF }
+pub fn T12(i : u16) -> u16 { i & 0x0FFF }
+pub fn T13(i : u16) -> u16 { i & 0x1FFF }
+pub fn T14(i : u16) -> u16 { i & 0x3FFF }
+pub fn T15(i : u16) -> u16 { i & 0x7FFF }
+pub fn T16(i : u16) -> u16 { i & 0xFFFF }
 
 pub fn join_bytes(msb : u8, lsb : u8) -> u16 {
     (msb as u16) << 8 | (lsb as u16)

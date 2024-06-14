@@ -8,7 +8,7 @@
 - [X] Create a renderer that shows information on screen
 - [X] Create a Display data type
 - [X] Create a BUS data type
-- [ ] Implement the PPU core methods
+- [X] Implement the PPU core methods
 - [ ] Implement background rendering (with prerendering)
 - [ ] Implement foreground rendering
 - [ ] Fully rendering
