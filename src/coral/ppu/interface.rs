@@ -45,40 +45,6 @@ pub fn cpu_read<T : Bus>(bus : &mut T, address : u16) -> u8 {
     }
 }
 
-// CPU Peek API
-fn peek_status<T : Bus>(bus : &mut T) -> u8 {
-   let data_buffer = get_data_buffer(bus); 
-   let status = get_status(bus);
-   let byte = (status & 0xE0) | (data_buffer & 0x1F);
-   byte
-}
-fn peek_data<T : Bus>(bus : &mut T) -> u8 {
-    let vram = get_vram(bus);
-    let old_data_buffer = get_data_buffer(bus);
-    let new_data_buffer = bus.peek_byte(vram);
-    let output = if vram >= 0x3F00 { new_data_buffer } else { old_data_buffer };
-    output
-}
-
-fn peek_oam_data<T : Bus>(bus : &mut T) -> u8 {
-    let address = get_oam_address(bus);
-    bus.get_ppu().oam_data[address as usize]
-}
-
-
-pub fn cpu_peek<T : Bus>(bus : &mut T, address : u16) -> u8 {
-    match address {
-        0x0000 => { 0 }
-        0x0001 => { 0 }
-        0x0002 => { peek_status(bus) }
-        0x0003 => { 0 }
-        0x0004 => { peek_oam_data(bus) }
-        0x0005 => { 0 }
-        0x0006 => { 0 }
-        0x0007 => { peek_data(bus) }
-        _ => {0}
-    }
-}
 
 // CPU Write API
 

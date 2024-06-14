@@ -84,9 +84,6 @@ impl coral::mos::Bus for SimpleBus {
         self.cycles.0.push(Cycle {address, byte, action});
         self.ram[address as usize] = byte;
     }
-    fn peek_byte(&self, address: u16) -> u8 {
-        return self.ram[address as usize];
-    }
     fn fetch_mos(&mut self) -> &mut coral::mos::Mos {
         return &mut self.cpu;
     }
