@@ -1,7 +1,7 @@
-mod types;
-mod primitive;
-mod instructions;
-mod disassembler;
+pub mod types;
+pub mod primitive;
+pub mod instructions;
+pub mod disassembler;
 
 pub use types::*;
 pub use instructions::*;
