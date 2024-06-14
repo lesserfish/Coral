@@ -125,13 +125,72 @@ fn ga_indirect_y<T : Bus>(bus : &mut T) -> u16 {
     address
 }
 
-pub fn fetch<T : Bus>(bus : &mut T) -> u8 {
+
+pub fn tick<T : Bus>(bus : &mut T){
+    update_clock(bus, 1);
+    let remaining_cycles = get_cycles(bus);
+    if remaining_cycles > 0 {
+        update_clock(bus, -1);
+    } else {
+        let opcode = fetch(bus);
+        execute(bus, opcode);
+        update_cycles(bus, -1);
+    }
+}
+
+
+pub fn irq<T : Bus>(bus : &mut T){
+    let interupt_disabled = get_flag(bus, Flag::InterruptDisable);
+    if !interupt_disabled {
+        let (pc_msb, pc_lsb) = utils::split_bytes(get_pc(bus));
+        let ps = utils::p0(get_ps(bus), true);
+        write_to_stack(bus, pc_msb);
+        write_to_stack(bus, pc_lsb);
+        write_to_stack(bus, ps);
+     
+        let irq_lsb = bus.read_byte(0xFFFA);
+        let irq_msb = bus.read_byte(0xFFFB);
+        let jump_address = join_bytes(irq_msb, irq_lsb);
+        set_pc(bus, jump_address);
+        set_flag(bus, Flag::InterruptDisable, true);
+    }
+}
+
+pub fn nmi<T : Bus>(bus : &mut T) {
+    let (pc_msb, pc_lsb) = utils::split_bytes(get_pc(bus));
+    let ps = utils::p0(get_ps(bus), true);
+    write_to_stack(bus, pc_msb);
+    write_to_stack(bus, pc_lsb);
+    write_to_stack(bus, ps);
+ 
+    let irq_lsb = bus.read_byte(0xFFFA);
+    let irq_msb = bus.read_byte(0xFFFB);
+    let jump_address = join_bytes(irq_msb, irq_lsb);
+    set_pc(bus, jump_address);
+    set_flag(bus, Flag::InterruptDisable, true);
+}
+
+pub fn reset<T : Bus>(bus : &mut T) {
+    let irq_lsb = bus.read_byte(0xFFFA);
+    let irq_msb = bus.read_byte(0xFFFB);
+    let jump_address = join_bytes(irq_msb, irq_lsb);
+    set_pc(bus, jump_address);
+    set_sp(bus, 0xFD);
+    set_acc(bus, 0x00);
+    set_idx(bus, 0x00);
+    set_idy(bus, 0x00);
+    set_ps(bus, utils::p5(0x00, true));
+    reset_clock(bus);
+    reset_cycles(bus);
+}
+
+fn fetch<T : Bus>(bus : &mut T) -> u8 {
     let pc = offset_pc(bus, 1);
     bus.read_byte(pc)
 }
 
 
-pub fn execute<T : Bus>(bus : &mut T, opcode : u8)
+fn execute<T : Bus>(bus : &mut T, opcode : u8)
 {
     match opcode {
         0x03 => {},
