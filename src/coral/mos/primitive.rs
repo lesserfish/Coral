@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::coral::utils;
 use crate::coral::mos::types::*;
 use crate::coral::mos::instructions::*;
@@ -13,17 +14,6 @@ use crate::coral::mos::instructions::*;
 //  A getter function that does NOT update the state of the bus should be named: get_xxxx
 //
 
-pub fn tick<T : Bus>(bus : &mut T){
-    update_clock(bus, 1);
-    let remaining_cycles = get_cycles(bus);
-    if remaining_cycles > 0 {
-        update_clock(bus, -1);
-    } else {
-        let opcode = fetch(bus);
-        execute(bus, opcode);
-        update_cycles(bus, -1);
-    }
-}
 
 pub fn update_clock<T : Bus>(bus : &mut T, offset : i64) -> u64{
     let output = bus.get_mos().clock;
@@ -44,6 +34,15 @@ pub fn update_cycles<T : Bus>(bus : &mut T, offset : i64) -> u64{
 pub fn get_cycles<T : Bus>(bus : &mut T) -> u64 {
     bus.get_mos().cycles
 }
+
+pub fn reset_clock<T:Bus>(bus : &mut T) {
+    bus.fetch_mos().clock = 0;
+}
+
+pub fn reset_cycles<T:Bus>(bus : &mut T) {
+    bus.fetch_mos().cycles = 0;
+}
+
 
 // Registers
 // Set

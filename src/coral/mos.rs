@@ -5,6 +5,5 @@ mod disassembler;
 
 pub use types::*;
 pub use instructions::*;
-pub use primitive::*;
 pub use disassembler::*;
 

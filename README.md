@@ -6,10 +6,10 @@
 - [X] Implement the CPU instructions. Pass all tests
 - [X] Create the INES Loader
 - [X] Create a renderer that shows information on screen
-- [ ] Create a Display data type
-- [ ] Create a BUS data type
-- [ ] Implement the PPU API
+- [X] Create a Display data type
+- [X] Create a BUS data type
 - [ ] Implement the PPU core methods
 - [ ] Implement background rendering (with prerendering)
 - [ ] Implement foreground rendering
+- [ ] Fully rendering
 - [ ] Implement multithreading

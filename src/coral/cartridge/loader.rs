@@ -39,12 +39,12 @@ fn get_console_type(byte : u8) -> ConsoleType {
     }
 }
 
-fn process_header(buffer : &mut [u8; 12], cartridge : &mut Cartridge) -> io::Result<()> {
+fn process_header(buffer : &mut [u8; 12], cart : &mut Cartridge) -> io::Result<()> {
     let prg_size = buffer[0];
     let chr_size = buffer[1];
 
-    cartridge.header.h_prg_size = prg_size;
-    cartridge.header.h_chr_size = chr_size;
+    cart.header.h_prg_size = prg_size;
+    cart.header.h_chr_size = chr_size;
 
     // Flag 6
     let flag6 = buffer[2];
@@ -54,11 +54,11 @@ fn process_header(buffer : &mut [u8; 12], cartridge : &mut Cartridge) -> io::Res
     let alt_layout = utils::b3(flag6);
     let mapper_lsn = flag6 >> 4;
 
-    cartridge.header.h_mirroring = mirroring;
-    cartridge.header.h_battery = battery;
-    cartridge.header.h_trainer = trainer;
-    cartridge.header.h_alt_layout = alt_layout;
-    cartridge.header.h_mapper = mapper_lsn;
+    cart.header.h_mirroring = mirroring;
+    cart.header.h_battery = battery;
+    cart.header.h_trainer = trainer;
+    cart.header.h_alt_layout = alt_layout;
+    cart.header.h_mapper = mapper_lsn;
 
     // Flag 7
     let flag7 = buffer[3];
@@ -66,19 +66,19 @@ fn process_header(buffer : &mut [u8; 12], cartridge : &mut Cartridge) -> io::Res
     let nes2 = utils::b3(flag7);
     let mapper_msn = flag7 & 0xF0;
 
-    cartridge.header.h_console = console_type;
-    cartridge.header.h_nes2 = nes2;
-    cartridge.header.h_mapper += mapper_msn;
+    cart.header.h_console = console_type;
+    cart.header.h_nes2 = nes2;
+    cart.header.h_mapper += mapper_msn;
 
     // Flag 8
     let prg_ram_size = buffer[4];
-    cartridge.header.h_prg_ram_size = prg_ram_size;
+    cart.header.h_prg_ram_size = prg_ram_size;
 
     // Flag 9
     let flag9 = buffer[5];
     let tv_system = if utils::b0(flag9) {TVSystem::NTSC} else {TVSystem::PAL};
 
-    cartridge.header.h_tv_system = tv_system;
+    cart.header.h_tv_system = tv_system;
 
 
     // Flag 10
@@ -88,7 +88,7 @@ fn process_header(buffer : &mut [u8; 12], cartridge : &mut Cartridge) -> io::Res
     Ok(())
 }
 
-fn load_header(file : &mut File, cartridge : &mut Cartridge) -> io::Result<()> {
+fn load_header(file : &mut File, cart : &mut Cartridge) -> io::Result<()> {
     let mut magic_numbers : [u8; 4] = [0; 4];
     file.read_exact(&mut magic_numbers)?;
 
@@ -99,55 +99,55 @@ fn load_header(file : &mut File, cartridge : &mut Cartridge) -> io::Result<()> {
     let mut header_buffer : [u8; 12] = [0; 12];
     file.read_exact(&mut header_buffer)?;
 
-    process_header(&mut header_buffer, cartridge)?;
+    process_header(&mut header_buffer, cart)?;
 
     Ok(())
 }
 
 
 // TODO: Implement this
-fn load_trainer(file : &mut File, cartridge : &mut Cartridge) -> io::Result<()> { 
-    let has_trainer = cartridge.header.h_trainer;
+fn load_trainer(file : &mut File, cart : &mut Cartridge) -> io::Result<()> { 
+    let has_trainer = cart.header.h_trainer;
 
     if has_trainer {
-        file.read_exact(&mut cartridge.trainer)?;
+        file.read_exact(&mut cart.trainer)?;
     }
     Ok(())
 } 
 
-fn load_prg(file : &mut File, cartridge : &mut Cartridge) -> io::Result<()> {
-    let buffer_size = 0x4000 * (cartridge.header.h_prg_size as usize);
-    cartridge.prg_data.resize(buffer_size, 0);
-    file.read_exact(&mut cartridge.prg_data)?;
+fn load_prg(file : &mut File, cart : &mut Cartridge) -> io::Result<()> {
+    let buffer_size = 0x4000 * (cart.header.h_prg_size as usize);
+    cart.prg_data.resize(buffer_size, 0);
+    file.read_exact(&mut cart.prg_data)?;
     Ok(())
 }
 
-fn load_chr(file : &mut File, cartridge : &mut Cartridge) -> io::Result<()> {
-    let buffer_size = 0x2000 * (cartridge.header.h_chr_size as usize);
-    cartridge.chr_data.resize(buffer_size, 0);
-    file.read_exact(&mut cartridge.chr_data)?;
+fn load_chr(file : &mut File, cart : &mut Cartridge) -> io::Result<()> {
+    let buffer_size = 0x2000 * (cart.header.h_chr_size as usize);
+    cart.chr_data.resize(buffer_size, 0);
+    file.read_exact(&mut cart.chr_data)?;
 
     Ok(())
 }
 
 // TODO: Implement this
-fn load_playchoice(_file : &mut File, _cartridge : &mut Cartridge) -> io::Result<()> {
+fn load_playchoice(_file : &mut File, _cart : &mut Cartridge) -> io::Result<()> {
     Ok(())
 }
 
-fn setup_mapper(cartridge : &mut Cartridge) -> io::Result<()> {
-    mapper::choose_mapper(cartridge)?;
+fn setup_mapper(cart : &mut Cartridge) -> io::Result<()> {
+    mapper::choose_mapper(cart)?;
     Ok(())
 }
 
 pub fn load_cartridge(filepath : String) -> io::Result<Cartridge> {
-    let mut cartridge = new_cartridge();
+    let mut cart = new_cartridge();
     let mut file = File::open(filepath)?;
-    load_header(&mut file, &mut cartridge)?;
-    load_trainer(&mut file, &mut cartridge)?;
-    load_prg(&mut file, &mut cartridge)?;
-    load_chr(&mut file, &mut cartridge)?;
-    load_playchoice(&mut file, &mut cartridge)?;
-    setup_mapper(&mut cartridge)?;
-    Ok(cartridge)
+    load_header(&mut file, &mut cart)?;
+    load_trainer(&mut file, &mut cart)?;
+    load_prg(&mut file, &mut cart)?;
+    load_chr(&mut file, &mut cart)?;
+    load_playchoice(&mut file, &mut cart)?;
+    setup_mapper(&mut cart)?;
+    Ok(cart)
 }

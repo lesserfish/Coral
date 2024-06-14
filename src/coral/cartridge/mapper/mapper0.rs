@@ -14,7 +14,7 @@ impl MapperT for Mapper0 {
     fn cpu_w_mapt(&mut self, address : u16) -> u16 {
         if self.m0_prg_banks > 1 { address & 0x7FFF } else { address & 0x3FFF }
     }
-    fn cpu_p_mapt(&mut self, address : u16) -> u16 {
+    fn cpu_p_mapt(&self, address : u16) -> u16 {
         if self.m0_prg_banks > 1 { address & 0x7FFF } else { address & 0x3FFF }
     }
     fn ppu_r_mapt(&mut self, address : u16) -> u16 {
@@ -23,7 +23,7 @@ impl MapperT for Mapper0 {
     fn ppu_w_mapt(&mut self, address : u16) -> u16 {
         address
     }
-    fn ppu_p_mapt(&mut self, address : u16) -> u16 {
+    fn ppu_p_mapt(&self, address : u16) -> u16 {
         address
     }
 }
