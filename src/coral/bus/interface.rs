@@ -1,5 +1,5 @@
 use crate::bus::types::*;
-use crate::cartridge as Cartridge;
+use crate::cartridge;
 use crate::mos;
 use crate::ppu;
 
@@ -15,8 +15,13 @@ impl Bus {
     fn cpu_read_apu(&mut self, _address : u16) -> u8 {
         0
     }
-    fn cpu_read_control(&mut self, _address : u16) -> u8 {
-        0
+    fn cpu_read_control(&mut self, address : u16) -> u8 {
+        let mapped_address = address & 0x01;
+        if mapped_address == 0 {
+            self.controller_a.read()
+        } else {
+            self.controller_b.read()
+        }
     }
     fn cpu_read_cart(&mut self, address : u16) -> u8 {
         self.cart.cpu_read(address)
@@ -31,7 +36,13 @@ impl Bus {
     }
     fn cpu_write_apu(&mut self, _address : u16, _byte : u8) {
     }
-    fn cpu_write_control(&mut self, _address : u16, _byte : u8) {
+    fn cpu_write_control(&mut self, address : u16, _byte : u8) {
+        let mapped_address = address & 0x01;
+        if mapped_address == 0 {
+            self.controller_a.write();
+        } else {
+            self.controller_b.write();
+        }
     }
     fn cpu_write_cart(&mut self, address : u16, byte : u8) {
         self.cart.cpu_write(address, byte);
@@ -68,7 +79,7 @@ impl Bus {
     fn ppu_read_nt(&mut self, address : u16) -> u8 {
         let mirroring = self.cart.header.h_mirroring;
         let nametable_choice = (address & 0x1FFF) >> 10;
-        let base_address = if mirroring == Cartridge::Mirroring::Horizontal {
+        let base_address = if mirroring == cartridge::Mirroring::Horizontal {
             match nametable_choice {
                 0 => 0x000,
                 1 => 0x400,
@@ -104,7 +115,7 @@ impl Bus {
     fn ppu_write_nt(&mut self, address : u16, byte : u8) {
         let mirroring = self.cart.header.h_mirroring;
         let nametable_choice = (address & 0x1FFF) >> 10;
-        let base_address = if mirroring == Cartridge::Mirroring::Horizontal {
+        let base_address = if mirroring == cartridge::Mirroring::Horizontal {
             match nametable_choice {
                 0 => 0x000,
                 1 => 0x400,
@@ -140,7 +151,7 @@ impl Bus {
     fn ppu_peek_nt(&self, address : u16) -> u8 {
         let mirroring = self.cart.header.h_mirroring;
         let nametable_choice = (address & 0x1FFF) >> 10;
-        let base_address = if mirroring == Cartridge::Mirroring::Horizontal {
+        let base_address = if mirroring == cartridge::Mirroring::Horizontal {
             match nametable_choice {
                 0 => 0x000,
                 1 => 0x400,

@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use coral::mos::set_decimal_enabled;
+use coral::mos::primitive::set_decimal_enabled;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
 use std::fs::File;

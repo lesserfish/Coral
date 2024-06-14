@@ -1,3 +1,4 @@
+use crate::controller;
 use crate::cartridge;
 use crate::mos;
 use crate::ppu;
@@ -23,5 +24,7 @@ pub struct Bus {
     pub ppu : ppu::PPU,
     pub cart : cartridge::Cartridge,
     pub data : Data,
+    pub controller_a : controller::Controller,
+    pub controller_b : controller::Controller
 }
 
