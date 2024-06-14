@@ -29,7 +29,8 @@ pub struct Context {
     pub cycle : i32,
     pub sprite_0_alpha : u8,
     pub sprite_0_x : i32,
-    pub sprite_0_hit_position : i32
+    pub sprite_0_hit_position : i32,
+    pub oam_address : u8
 }
 
 #[derive(Copy, Clone, Debug)] 

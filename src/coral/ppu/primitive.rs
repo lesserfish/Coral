@@ -376,6 +376,11 @@ pub fn set_sprite_0_hit_position<T : Bus>(bus : &mut T, v : i32) -> i32 {
     bus.fetch_ppu().context.sprite_0_hit_position = v;
     output
 }
+pub fn set_oam_address <T : Bus>(bus : &mut T, v : u8) -> u8 {
+    let output = bus.get_ppu().context.oam_address;
+    bus.fetch_ppu().context.oam_address = v;
+    output
+}
 
 
 pub fn get_complete<T : Bus>(bus : &mut T) -> bool {
@@ -395,6 +400,9 @@ pub fn get_sprite_0_x<T : Bus>(bus : &mut T) -> i32 {
 }
 pub fn get_sprite_0_hit_position<T : Bus>(bus : &mut T) -> i32 {
     bus.get_ppu().context.sprite_0_hit_position
+}
+pub fn get_oam_address<T : Bus>(bus : &mut T) -> u8 {
+    bus.get_ppu().context.oam_address
 }
 
 

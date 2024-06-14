@@ -9,8 +9,9 @@ impl Bus {
         let mapped_address = address & 0x07FF;
         self.data.cpu_ram[mapped_address as usize]
     }
-    fn cpu_read_ppu(&mut self, _address : u16) -> u8 {
-        0
+    fn cpu_read_ppu(&mut self, address : u16) -> u8 {
+        let mapped_address = address & 0x7;
+        ppu::interface::cpu_read(self, mapped_address)
     }
     fn cpu_read_apu(&mut self, _address : u16) -> u8 {
         0
@@ -32,7 +33,9 @@ impl Bus {
         let mapped_address = address & 0x07FF;
         self.data.cpu_ram[mapped_address as usize] = byte;
     }
-    fn cpu_write_ppu(&mut self, _address : u16, _byte : u8) {
+    fn cpu_write_ppu(&mut self, address : u16, byte : u8) {
+        let mapped_address = address & 0x7;
+        ppu::interface::cpu_write(self, mapped_address, byte)
     }
     fn cpu_write_apu(&mut self, _address : u16, _byte : u8) {
     }
