@@ -116,7 +116,7 @@ fn ram_to_tom(tom: &mut TomHarte, ram: [u8; 0x10000]) {
 }
 
 fn mos_from_tom(tom: &TomHarte) -> coral::mos::Mos {
-    let mut cpu = coral::mos::new_mos();
+    let mut cpu = coral::mos::new();
     cpu.registers.pc = tom.pc;
     cpu.registers.sp = tom.s;
     cpu.registers.acc = tom.a;

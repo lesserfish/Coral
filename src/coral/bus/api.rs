@@ -68,6 +68,10 @@ impl Bus {
         let address = y * 256 + x;
         self.data.display[address]
     }
+
+    pub fn reset(&mut self){
+        mos::reset(self);
+    }
 }
 
 pub fn load<T : AsRef<Path>>(filepath : T) -> Result<Bus> {
@@ -79,7 +83,7 @@ pub fn load<T : AsRef<Path>>(filepath : T) -> Result<Bus> {
     let controller_a = controller::new();
     let controller_b = controller::new();
 
-    let bus = Bus { context, cpu, ppu, cart, data, controller_a, controller_b };
-
+    let mut bus = Bus { context, cpu, ppu, cart, data, controller_a, controller_b };
+    bus.reset();
     Ok(bus)
 }

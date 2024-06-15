@@ -133,12 +133,13 @@ impl Bus {
 
 impl mos::Bus for Bus {
     fn read_byte(&mut self, address: u16) -> u8 {
-        if address <= 0x1FFF      { self.cpu_read_ram(address) }         // 0x0000 - 0x1FFF
+        let byte = if address <= 0x1FFF      { self.cpu_read_ram(address) }         // 0x0000 - 0x1FFF
         else if address <= 0x3FFF { self.cpu_read_ppu(address) }         // 0x2000 - 0x3FFF
         else if address <= 0x4015 { self.cpu_read_apu(address) }         // 0x4000 - 0x4015
         else if address <= 0x4017 { self.cpu_read_control(address) }     // 0x4016 - 0x4017
         else if address >= 0x4020 { self.cpu_read_cart(address) }        // 0x4020 - 0xFFFF
-        else { 0 }                                                       
+        else { 0 };
+        byte
     }
     fn write_byte(&mut self, address: u16, byte: u8) {
         if address <= 0x1FFF      { self.cpu_write_ram(address, byte)}       // 0x0000 - 0x1FFF

@@ -172,7 +172,7 @@ pub fn set_control_flag<T : Bus>(bus : &mut T, f : ControlFlag, v: bool){
 // Mask Flags
 
 pub fn get_mask_flag<T : Bus>(bus : &mut T, f : MaskFlag) -> bool {
-    let mask = get_status(bus);
+    let mask = get_mask(bus);
     match f {
         MaskFlag::Grayscale =>            { utils::b0(mask) }
         MaskFlag::RenderBackgroundLeft => { utils::b1(mask) }
@@ -186,7 +186,7 @@ pub fn get_mask_flag<T : Bus>(bus : &mut T, f : MaskFlag) -> bool {
 }
 
 pub fn set_mask_flag<T : Bus>(bus : &mut T, f : MaskFlag, v : bool){
-    let mut mask = fetch_status(bus);
+    let mut mask = fetch_mask(bus);
     match f {
         MaskFlag::Grayscale =>            { utils::s0(mask, v) }
         MaskFlag::RenderBackgroundLeft => { utils::s1(mask, v) }
@@ -352,7 +352,7 @@ pub fn set_complete<T : Bus>(bus : &mut T, v : bool) -> bool {
     output
 }
 pub fn set_scanline<T : Bus>(bus : &mut T, v : i32) -> i32 {
-    let output = bus.fetch_ppu().context.cycle;
+    let output = bus.fetch_ppu().context.scanline;
     bus.fetch_ppu().context.scanline= v;
     output
 }
