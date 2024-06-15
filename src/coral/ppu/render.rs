@@ -18,6 +18,7 @@ fn merge_pixel_bits(lsb : u8, msb : u8) -> [u8; 8]{
     output
 }
 
+// Sprite rendering
 
 // Background rendering
 
