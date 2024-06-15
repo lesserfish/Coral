@@ -78,6 +78,10 @@ impl Bus {
         self.controller_a.reset();
         self.controller_b.reset();
     }
+
+    pub fn copy_to_screen(&self, screen : &mut [u8; 256 * 240]){
+        screen.copy_from_slice(&self.data.display);
+    }
 }
 
 pub fn load<T : AsRef<Path>>(filepath : T) -> Result<Bus> {
