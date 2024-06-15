@@ -4,9 +4,6 @@ pub trait Bus {
     fn set_pixel(&mut self, position : (u16, u16), color : u8);
     fn trigger_nmi(&mut self);
     fn fetch_ppu(&mut self) -> &mut PPU;
-    fn get_ppu(&mut self) -> PPU {
-        *self.fetch_ppu()
-    }
 }
 
 #[derive(Copy, Clone, Debug)] 
