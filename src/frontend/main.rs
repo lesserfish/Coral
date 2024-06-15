@@ -7,7 +7,7 @@ pub fn main()-> io::Result<()> {
 
     let sdl = sdl2::init().map_err(err)?;
     let video = sdl.video().map_err(err)?;
-    let window = video.window("Coral", 256 * 4, 128 * 4).position_centered().build().map_err(err)?;
+    let window = video.window("Coral", 256 * 3, 240 * 3).position_centered().build().map_err(err)?;
     let mut canvas = window.into_canvas().accelerated().build().map_err(err)?;
     let creator = canvas.texture_creator();
     let mut event_pump = sdl.event_pump().unwrap();
