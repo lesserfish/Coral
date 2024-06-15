@@ -387,7 +387,7 @@ pub fn get_complete<T : Bus>(bus : &mut T) -> bool {
     bus.fetch_ppu().context.complete
 }
 pub fn get_scanline<T : Bus>(bus : &mut T) -> i32 {
-    bus.fetch_ppu().context.cycle
+    bus.fetch_ppu().context.scanline
 }
 pub fn get_cycle<T : Bus>(bus : &mut T) -> i32 {
     bus.fetch_ppu().context.cycle

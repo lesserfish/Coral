@@ -55,6 +55,8 @@ impl Bus {
             self.tick_cpu();
         }
         self.tick_ppu();
+
+        self.context.clock += 1;
     }
     pub fn frame(&mut self){
         while !self.ppu.complete() {
