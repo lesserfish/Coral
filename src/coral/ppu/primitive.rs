@@ -13,70 +13,70 @@ pub fn get_sprite<T : Bus>(bus : &mut T, id : usize) -> Sprite {
 
 // Registers: Setters
 pub fn set_control<T : Bus>(bus : &mut T, v : u8) -> u8 {
-   let output = bus.get_ppu().registers.control;
+   let output = bus.fetch_ppu().registers.control;
    bus.fetch_ppu().registers.control = v;
    output
 }
 pub fn set_mask<T : Bus>(bus : &mut T, v : u8) -> u8 {
-   let output = bus.get_ppu().registers.mask;
+   let output = bus.fetch_ppu().registers.mask;
    bus.fetch_ppu().registers.mask = v;
    output
 }
 pub fn set_status<T : Bus>(bus : &mut T, v : u8) -> u8 {
-   let output = bus.get_ppu().registers.status;
+   let output = bus.fetch_ppu().registers.status;
    bus.fetch_ppu().registers.status = v;
    output
 }
 pub fn set_fine_x<T : Bus>(bus : &mut T, v : u8) -> u8 {
-   let output = bus.get_ppu().registers.fine_x;
+   let output = bus.fetch_ppu().registers.fine_x;
    bus.fetch_ppu().registers.fine_x = v;
    output
 }
 pub fn set_data_buffer<T : Bus>(bus : &mut T, v : u8) -> u8 {
-   let output = bus.get_ppu().registers.data_buffer;
+   let output = bus.fetch_ppu().registers.data_buffer;
    bus.fetch_ppu().registers.data_buffer = v;
    output
 }
 pub fn set_vram<T : Bus>(bus : &mut T, v : u16) -> u16{
-   let output = bus.get_ppu().registers.vram;
+   let output = bus.fetch_ppu().registers.vram;
    bus.fetch_ppu().registers.vram = v;
    output
 }
 pub fn set_tram<T : Bus>(bus : &mut T, v : u16) -> u16{
-   let output = bus.get_ppu().registers.tram;
+   let output = bus.fetch_ppu().registers.tram;
    bus.fetch_ppu().registers.tram = v;
    output
 }
 pub fn set_write_toggle<T : Bus>(bus : &mut T, v : bool) -> bool{
-   let output = bus.get_ppu().registers.write_toggle;
+   let output = bus.fetch_ppu().registers.write_toggle;
    bus.fetch_ppu().registers.write_toggle = v;
    output
 }
 
 // Registers: Getters
 pub fn get_control<T : Bus>(bus : &mut T) -> u8 {
-   bus.get_ppu().registers.control
+   bus.fetch_ppu().registers.control
 }
 pub fn get_mask<T : Bus>(bus : &mut T) -> u8 {
-   bus.get_ppu().registers.mask
+   bus.fetch_ppu().registers.mask
 }
 pub fn get_status<T : Bus>(bus : &mut T) -> u8 {
-   bus.get_ppu().registers.status
+   bus.fetch_ppu().registers.status
 }
 pub fn get_fine_x<T : Bus>(bus : &mut T) -> u8 {
-   bus.get_ppu().registers.fine_x
+   bus.fetch_ppu().registers.fine_x
 }
 pub fn get_data_buffer<T : Bus>(bus : &mut T) -> u8 {
-   bus.get_ppu().registers.data_buffer
+   bus.fetch_ppu().registers.data_buffer
 }
 pub fn get_vram<T : Bus>(bus : &mut T) -> u16{
-   bus.get_ppu().registers.vram
+   bus.fetch_ppu().registers.vram
 }
 pub fn get_tram<T : Bus>(bus : &mut T) -> u16{
-   bus.get_ppu().registers.tram
+   bus.fetch_ppu().registers.tram
 }
 pub fn get_write_toggle<T : Bus>(bus : &mut T) -> bool{
-   bus.get_ppu().registers.write_toggle
+   bus.fetch_ppu().registers.write_toggle
 }
 
 // Registers: Getters
@@ -108,35 +108,35 @@ pub fn fetch_write_toggle<T : Bus>(bus : &mut T) -> &mut bool{
 
 // Registers: Mappers
 pub fn map_control<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
-   let x = bus.get_ppu().registers.control;
+   let x = bus.fetch_ppu().registers.control;
    set_control(bus, f(x))
 }
 pub fn map_mask<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
-   let x = bus.get_ppu().registers.mask;
+   let x = bus.fetch_ppu().registers.mask;
    set_mask(bus, f(x))
 }
 pub fn map_status<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
-   let x = bus.get_ppu().registers.status;
+   let x = bus.fetch_ppu().registers.status;
    set_status(bus, f(x))
 }
 pub fn map_fine_x<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
-   let x = bus.get_ppu().registers.fine_x;
+   let x = bus.fetch_ppu().registers.fine_x;
    set_fine_x(bus, f(x))
 }
 pub fn map_data_buffer<T : Bus>(bus : &mut T, f : impl Fn(u8) -> u8) -> u8 {
-   let x = bus.get_ppu().registers.data_buffer;
+   let x = bus.fetch_ppu().registers.data_buffer;
    set_data_buffer(bus, f(x))
 }
 pub fn map_vram<T : Bus>(bus : &mut T, f : impl Fn(u16) -> u16) -> u16 {
-   let x = bus.get_ppu().registers.vram;
+   let x = bus.fetch_ppu().registers.vram;
    set_vram(bus, f(x))
 }
 pub fn map_tram<T : Bus>(bus : &mut T, f : impl Fn(u16) -> u16) -> u16 {
-   let x = bus.get_ppu().registers.tram;
+   let x = bus.fetch_ppu().registers.tram;
    set_tram(bus, f(x))
 }
 pub fn map_write_toggle<T : Bus>(bus : &mut T, f : impl Fn(bool) -> bool) -> bool {
-   let x = bus.get_ppu().registers.write_toggle;
+   let x = bus.fetch_ppu().registers.write_toggle;
    set_write_toggle(bus, f(x))
 }
 
@@ -347,62 +347,62 @@ pub fn get_sprite_palette(sprite : Sprite) -> u8 {
 // Context
 
 pub fn set_complete<T : Bus>(bus : &mut T, v : bool) -> bool {
-    let output = bus.get_ppu().context.complete;
+    let output = bus.fetch_ppu().context.complete;
     bus.fetch_ppu().context.complete = v;
     output
 }
 pub fn set_scanline<T : Bus>(bus : &mut T, v : i32) -> i32 {
-    let output = bus.get_ppu().context.cycle;
+    let output = bus.fetch_ppu().context.cycle;
     bus.fetch_ppu().context.scanline= v;
     output
 }
 pub fn set_cycle<T : Bus>(bus : &mut T, v : i32) -> i32 {
-    let output = bus.get_ppu().context.cycle;
+    let output = bus.fetch_ppu().context.cycle;
     bus.fetch_ppu().context.cycle = v;
     output
 }
 pub fn set_sprite_0_alpha<T : Bus>(bus : &mut T, v : u8) -> u8 {
-    let output = bus.get_ppu().context.sprite_0_alpha;
+    let output = bus.fetch_ppu().context.sprite_0_alpha;
     bus.fetch_ppu().context.sprite_0_alpha = v;
     output
 }
 pub fn set_sprite_0_x<T : Bus>(bus : &mut T, v : i32) -> i32 {
-    let output = bus.get_ppu().context.sprite_0_x;
+    let output = bus.fetch_ppu().context.sprite_0_x;
     bus.fetch_ppu().context.sprite_0_x = v;
     output
 }
 pub fn set_sprite_0_hit_position<T : Bus>(bus : &mut T, v : i32) -> i32 {
-    let output = bus.get_ppu().context.sprite_0_hit_position;
+    let output = bus.fetch_ppu().context.sprite_0_hit_position;
     bus.fetch_ppu().context.sprite_0_hit_position = v;
     output
 }
 pub fn set_oam_address <T : Bus>(bus : &mut T, v : u8) -> u8 {
-    let output = bus.get_ppu().context.oam_address;
+    let output = bus.fetch_ppu().context.oam_address;
     bus.fetch_ppu().context.oam_address = v;
     output
 }
 
 
 pub fn get_complete<T : Bus>(bus : &mut T) -> bool {
-    bus.get_ppu().context.complete
+    bus.fetch_ppu().context.complete
 }
 pub fn get_scanline<T : Bus>(bus : &mut T) -> i32 {
-    bus.get_ppu().context.cycle
+    bus.fetch_ppu().context.cycle
 }
 pub fn get_cycle<T : Bus>(bus : &mut T) -> i32 {
-    bus.get_ppu().context.cycle
+    bus.fetch_ppu().context.cycle
 }
 pub fn get_sprite_0_alpha<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_ppu().context.sprite_0_alpha
+    bus.fetch_ppu().context.sprite_0_alpha
 }
 pub fn get_sprite_0_x<T : Bus>(bus : &mut T) -> i32 {
-    bus.get_ppu().context.sprite_0_x
+    bus.fetch_ppu().context.sprite_0_x
 }
 pub fn get_sprite_0_hit_position<T : Bus>(bus : &mut T) -> i32 {
-    bus.get_ppu().context.sprite_0_hit_position
+    bus.fetch_ppu().context.sprite_0_hit_position
 }
 pub fn get_oam_address<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_ppu().context.oam_address
+    bus.fetch_ppu().context.oam_address
 }
 
 

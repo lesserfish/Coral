@@ -2,9 +2,6 @@ pub trait Bus {
     fn read_byte(&mut self, address: u16) -> u8;
     fn write_byte(&mut self, address: u16, byte: u8);
     fn fetch_mos(&mut self) -> &mut Mos;
-    fn get_mos(&mut self) -> Mos {
-        *self.fetch_mos()
-    }
 }
 
 #[derive(Copy, Clone, Debug)] 

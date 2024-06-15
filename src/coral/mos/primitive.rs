@@ -16,23 +16,23 @@ use crate::coral::mos::instructions::*;
 
 
 pub fn update_clock<T : Bus>(bus : &mut T, offset : i64) -> u64{
-    let output = bus.get_mos().clock;
+    let output = bus.fetch_mos().clock;
     bus.fetch_mos().clock += offset as u64;
     output
 }
 
 pub fn get_clock<T : Bus>(bus : &mut T) -> u64 {
-    bus.get_mos().clock
+    bus.fetch_mos().clock
 }
 
 pub fn update_cycles<T : Bus>(bus : &mut T, offset : i64) -> u64{
-    let output = bus.get_mos().cycles;
+    let output = bus.fetch_mos().cycles;
     bus.fetch_mos().cycles += offset as u64;
     output
 }
 
 pub fn get_cycles<T : Bus>(bus : &mut T) -> u64 {
-    bus.get_mos().cycles
+    bus.fetch_mos().cycles
 }
 
 pub fn reset_clock<T:Bus>(bus : &mut T) {
@@ -47,54 +47,54 @@ pub fn reset_cycles<T:Bus>(bus : &mut T) {
 // Registers
 // Set
 pub fn set_pc<T : Bus>(bus : &mut T, v : u16) -> u16{
-    let output = bus.get_mos().registers.pc;
+    let output = bus.fetch_mos().registers.pc;
     bus.fetch_mos().registers.pc = v;
     output
 }
 pub fn set_sp<T : Bus>(bus : &mut T, v : u8) -> u8{
-    let output = bus.get_mos().registers.sp;
+    let output = bus.fetch_mos().registers.sp;
     bus.fetch_mos().registers.sp = v;
     output
 }
 pub fn set_acc<T : Bus>(bus : &mut T, v : u8) -> u8{
-    let output = bus.get_mos().registers.acc;
+    let output = bus.fetch_mos().registers.acc;
     bus.fetch_mos().registers.acc = v;
     output
 }
 pub fn set_idx<T : Bus>(bus : &mut T, v : u8) -> u8{
-    let output = bus.get_mos().registers.idx;
+    let output = bus.fetch_mos().registers.idx;
     bus.fetch_mos().registers.idx = v;
     output
 }
 pub fn set_idy<T : Bus>(bus : &mut T, v : u8) -> u8{
-    let output = bus.get_mos().registers.idy;
+    let output = bus.fetch_mos().registers.idy;
     bus.fetch_mos().registers.idy = v;
     output
 }
 pub fn set_ps<T : Bus>(bus : &mut T, v : u8) -> u8{
-    let output = bus.get_mos().registers.ps;
+    let output = bus.fetch_mos().registers.ps;
     bus.fetch_mos().registers.ps = v;
     output
 }
 
 // Get
 pub fn get_pc<T : Bus>(bus : &mut T) -> u16 {
-    bus.get_mos().registers.pc
+    bus.fetch_mos().registers.pc
 }
 pub fn get_sp<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_mos().registers.sp
+    bus.fetch_mos().registers.sp
 }
 pub fn get_acc<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_mos().registers.acc
+    bus.fetch_mos().registers.acc
 }
 pub fn get_idx<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_mos().registers.idx
+    bus.fetch_mos().registers.idx
 }
 pub fn get_idy<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_mos().registers.idy
+    bus.fetch_mos().registers.idy
 }
 pub fn get_ps<T : Bus>(bus : &mut T) -> u8 {
-    bus.get_mos().registers.ps
+    bus.fetch_mos().registers.ps
 }
 
 // Fetch
@@ -192,15 +192,15 @@ pub fn set_flag<T : Bus>(bus : &mut T, f : Flag, b : bool){
 // Context
 
 pub fn get_decimal_enabled<T : Bus>(bus : &mut T) -> bool {
-    bus.get_mos().context.decimal_enabled
+    bus.fetch_mos().context.decimal_enabled
 }
 
 pub fn get_complete<T : Bus>(bus : &mut T) -> bool {
-    bus.get_mos().context.compĺete
+    bus.fetch_mos().context.compĺete
 }
 
 pub fn get_super_instruction<T : Bus>(bus : &mut T) -> bool {
-    bus.get_mos().context.super_instruction
+    bus.fetch_mos().context.super_instruction
 }
 
 pub fn set_decimal_enabled<T : Bus>(bus : &mut T, v : bool){

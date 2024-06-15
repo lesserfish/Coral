@@ -28,7 +28,7 @@ fn read_data<T : Bus>(bus : &mut T) -> u8 {
 }
 fn read_oam_data<T : Bus>(bus : &mut T) -> u8 {
     let address = get_oam_address(bus);
-    bus.get_ppu().oam_data[address as usize]
+    bus.fetch_ppu().oam_data[address as usize]
 }
 
 pub fn cpu_read<T : Bus>(bus : &mut T, address : u16) -> u8 {
