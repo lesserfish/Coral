@@ -109,3 +109,13 @@ pub enum SpriteFlag {
     SpriteVerticalFlip
 }
 
+
+pub fn new() -> PPU {
+    let registers = Registers{control: 0, mask: 0, status: 0, fine_x: 0, data_buffer: 0, vram: 0, tram: 0, write_toggle: false};
+    let context = Context{complete: false, scanline: -1, cycle: 0, sprite_0_alpha: 0, sprite_0_x: -1, sprite_0_hit_position: -1, oam_address: 0};
+    let oam_data = [0; 0xFF];
+    let fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Unset} ; 32 * 8];
+    let bg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Unset} ; 33 * 8];
+
+    PPU {registers, context, oam_data, fg_buffer, bg_buffer}
+}

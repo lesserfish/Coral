@@ -1,4 +1,5 @@
 use std::io::{self, Read};
+use std::path::Path;
 use std::fs::File;
 use std::io::Error;
 use std::io::ErrorKind;
@@ -140,7 +141,7 @@ fn setup_mapper(cart : &mut Cartridge) -> io::Result<()> {
     Ok(())
 }
 
-pub fn load_cartridge(filepath : String) -> io::Result<Cartridge> {
+pub fn load_cartridge<T : AsRef<Path>>(filepath : T) -> io::Result<Cartridge> {
     let mut cart = new_cartridge();
     let mut file = File::open(filepath)?;
     load_header(&mut file, &mut cart)?;
