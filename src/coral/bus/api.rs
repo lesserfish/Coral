@@ -70,7 +70,13 @@ impl Bus {
     }
 
     pub fn reset(&mut self){
+        self.context = Context{dma_page: 0, dma_byte: 0, dma_cycle: 0, dma_hold: false, clock: 0};
         mos::reset(self);
+        self.ppu.reset();
+        self.cart.reset();
+        self.data = Data { cpu_ram: [0; 0x800], nt_ram: [0; 0x800], pal_ram: [0; 0x20], display: [0x0; 256 * 240] };
+        self.controller_a.reset();
+        self.controller_b.reset();
     }
 }
 

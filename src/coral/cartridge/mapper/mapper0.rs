@@ -30,6 +30,7 @@ impl MapperT for Mapper0 {
     fn clone_self(&self) -> Box<dyn MapperT> {
         Box::new(self.clone())
     }
+    fn reset(&mut self){}
 }
 
 
