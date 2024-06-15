@@ -37,6 +37,8 @@ pub struct Header {
     pub h_tv_system : TVSystem
 }
 
+
+#[derive(Clone)] 
 pub struct Cartridge {
     pub header : Header,
     pub trainer : [u8; 512],

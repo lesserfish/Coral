@@ -5,9 +5,11 @@ pub trait MapperT {
     fn ppu_r_mapt(&mut self, address : u16) -> u16;
     fn ppu_w_mapt(&mut self, address : u16) -> u16;
     fn ppu_p_mapt(&self, address : u16) -> u16;
+    fn clone_self(&self) -> Box<dyn MapperT>;
 }
 
 
+#[derive(Clone)] 
 pub struct Mapper(pub Box<dyn MapperT>);
 
 impl Mapper {
@@ -28,5 +30,11 @@ impl Mapper {
     }
     pub fn ppu_p_map(&self, address : u16) -> u16{
         self.0.ppu_p_mapt(address)
+    }
+}
+
+impl Clone for Box<dyn MapperT> {
+    fn clone(&self) -> Self {
+        self.clone_self()
     }
 }

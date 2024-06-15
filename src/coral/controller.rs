@@ -1,3 +1,4 @@
+#[derive(Copy, Clone, Debug)] 
 pub struct Controller {
     pub state_data : u8,
     pub live_data : u8

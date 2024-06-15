@@ -2,6 +2,7 @@ use crate::coral::cartridge::mapper::types::*;
 use crate::coral::cartridge::types;
 
 
+#[derive(Copy, Clone, Debug)] 
 pub struct Mapper0 {
     pub m0_prg_banks : u8,
     pub m0_chr_banks : u8
@@ -25,6 +26,9 @@ impl MapperT for Mapper0 {
     }
     fn ppu_p_mapt(&self, address : u16) -> u16 {
         address
+    }
+    fn clone_self(&self) -> Box<dyn MapperT> {
+        Box::new(self.clone())
     }
 }
 
