@@ -65,5 +65,8 @@ impl Cartridge {
         let mapped_address = self.mapper.ppu_w_map(address) as usize;
         self.chr_data[mapped_address] = byte;
     }
+    pub fn reset(&mut self){
+        self.mapper.reset();
+    }
 
 }
