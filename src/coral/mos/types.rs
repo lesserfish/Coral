@@ -61,7 +61,7 @@ pub enum AddrMode
 
 // Creation
 
-pub fn new_mos() -> Mos
+pub fn new() -> Mos
 {
     return Mos {
             registers : Registers { pc: 0, sp: 0, acc: 0, idx: 0, idy: 0, ps: 0 },

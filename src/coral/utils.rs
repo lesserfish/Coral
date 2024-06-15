@@ -28,14 +28,14 @@ pub fn p5(i : u8, v : bool) -> u8 { if v { i | 0x20 } else { i & !0x20 } }
 pub fn p6(i : u8, v : bool) -> u8 { if v { i | 0x40 } else { i & !0x40 } }
 pub fn p7(i : u8, v : bool) -> u8 { if v { i | 0x80 } else { i & !0x80 } }
 
-pub fn t0(i : u8) -> u8 { i & 0x01 }
-pub fn t1(i : u8) -> u8 { i & 0x03 }
-pub fn t2(i : u8) -> u8 { i & 0x07 }
-pub fn t3(i : u8) -> u8 { i & 0x0F }
-pub fn t4(i : u8) -> u8 { i & 0x1F }
-pub fn t5(i : u8) -> u8 { i & 0x3F }
-pub fn t6(i : u8) -> u8 { i & 0x7F }
-pub fn t7(i : u8) -> u8 { i & 0xFF }
+pub fn t1(i : u8) -> u8 { i & 0x01 }
+pub fn t2(i : u8) -> u8 { i & 0x03 }
+pub fn t3(i : u8) -> u8 { i & 0x07 }
+pub fn t4(i : u8) -> u8 { i & 0x0F }
+pub fn t5(i : u8) -> u8 { i & 0x1F }
+pub fn t6(i : u8) -> u8 { i & 0x3F }
+pub fn t7(i : u8) -> u8 { i & 0x7F }
+pub fn t8(i : u8) -> u8 { i & 0xFF }
 
 pub fn B0 (i : u16) -> bool { i & 0x0001 > 0 }
 pub fn B1 (i : u16) -> bool { i & 0x0002 > 0 }
