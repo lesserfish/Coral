@@ -21,7 +21,6 @@ pub fn main()-> io::Result<()> {
         control(&mut event_pump, &mut ctx)?;
         update_textures(&mut textures, &mut ctx)?;
         render(&mut canvas, &mut textures)?;
-        std::thread::sleep(std::time::Duration::new(0, 1_000_000_000u32 / 60));
     }
 
     Ok(())
