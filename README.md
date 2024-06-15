@@ -10,6 +10,6 @@
 - [X] Create a BUS data type
 - [X] Implement the PPU core methods
 - [X] Implement background rendering (with prerendering)
-- [ ] Implement foreground rendering
+- [X] Implement foreground rendering
 - [ ] Fully rendering
 - [ ] Implement multithreading

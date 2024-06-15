@@ -29,7 +29,7 @@ pub struct Context {
     pub oam_address : u8
 }
 
-#[derive(Copy, Clone, Debug)] 
+#[derive(Copy, Clone, Debug, PartialEq)] 
 pub enum Priority {
     Front,
     Middle,
@@ -48,7 +48,7 @@ pub struct PixelInfo {
 pub struct PPU {
    pub registers : Registers,
    pub context : Context,
-   pub oam_data : [u8; 0xFF],
+   pub oam_data : [u8; 0x100],
    pub fg_buffer : [PixelInfo; 32 * 8], // 256 pixels
    pub bg_buffer : [PixelInfo; 33 * 8], // 256 pixels + an additional 8 to accomodate scrolling
 }
@@ -113,7 +113,7 @@ pub enum SpriteFlag {
 pub fn new() -> PPU {
     let registers = Registers{control: 0, mask: 0, status: 0, fine_x: 0, data_buffer: 0, vram: 0, tram: 0, write_toggle: false};
     let context = Context{complete: false, scanline: -1, cycle: 0, sprite_0_alpha: 0, sprite_0_x: -1, sprite_0_hit_position: -1, oam_address: 0};
-    let oam_data = [0; 0xFF];
+    let oam_data = [0; 0x100];
     let fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Unset} ; 32 * 8];
     let bg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Unset} ; 33 * 8];
 
