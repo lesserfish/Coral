@@ -3,6 +3,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use crate::coral::bus;
+use crate::coral::ppu;
 
 use super::utils::color_to_rgba;
 
@@ -30,7 +31,7 @@ pub fn create_textures(creator : &sdl2::render::TextureCreator<sdl2::video::Wind
 }
 
 pub fn create_context() -> io::Result<Context>{
-    let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/Super Mario Bros. (World).nes")?;
+    let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/donkey_kong.nes")?;
     let ctx = Context{running: true, nes : n};
 
     Ok(ctx)
