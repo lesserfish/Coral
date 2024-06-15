@@ -30,7 +30,7 @@ pub fn create_textures(creator : &sdl2::render::TextureCreator<sdl2::video::Wind
 }
 
 pub fn create_context() -> io::Result<Context>{
-    let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/Super Mario Bros. (World).nes")?;
+    let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/nestest.nes")?;
     let ctx = Context{running: true, nes : n};
 
     Ok(ctx)
@@ -52,7 +52,7 @@ pub fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Res
 }
 
 pub fn update_texture(ctx: &mut Context, texture_data : &mut [u8], pitch : usize){
-    ctx.nes.tick();
+    ctx.nes.frame();
     for y in 0..240 {
         for x in 0..256 {
             let address = y * pitch + x*4;

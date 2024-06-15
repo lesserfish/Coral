@@ -130,7 +130,7 @@ pub fn tick<T : Bus>(bus : &mut T){
     update_clock(bus, 1);
     let remaining_cycles = get_cycles(bus);
     if remaining_cycles > 0 {
-        update_clock(bus, -1);
+        update_cycles(bus, -1);
     } else {
         let opcode = fetch(bus);
         execute(bus, opcode);
