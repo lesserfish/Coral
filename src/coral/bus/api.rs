@@ -32,7 +32,7 @@ impl Bus {
     fn tick_dma(&mut self){
         let dma_cycle = self.context.dma_cycle;
         let offset = dma_cycle / 2;
-        if offset % 2 == 0 {
+        if dma_cycle % 2 == 0 {
             self.tick_dma_r(offset as u16);
         } else {
             self.tick_dma_w(offset as u16);

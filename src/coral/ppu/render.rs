@@ -93,7 +93,7 @@ fn write_to_fg_buffer<T : Bus>(bus: &mut T, screen_x : usize, colors : [u8; 8], 
 
         if address < 256{
             let current_priority = bus.fetch_ppu().fg_buffer[address].priority;
-            if current_priority == Priority::Unset {
+            if current_priority != Priority::Front {
                 bus.fetch_ppu().fg_buffer[address] = pixel_info;
             }
         }
