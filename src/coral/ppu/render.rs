@@ -19,6 +19,122 @@ fn merge_pixel_bits(lsb : u8, msb : u8) -> [u8; 8]{
 }
 
 // Sprite rendering
+//
+fn reset_fg_buffer<T : Bus>(bus : &mut T){
+    bus.fetch_ppu().fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Middle}; 32 * 8];
+}
+
+
+fn sprite_is_visible<T : Bus>(bus : &mut T, sprite : Sprite) -> bool {
+    let screen_y = get_scanline(bus);
+    let sprite_height = if get_control_flag(bus, ControlFlag::SpriteSize) { 16 } else { 8 };
+    let sprite_y = sprite.y_pos as i32;
+    let difference = screen_y - sprite_y;
+    difference >= 0 && difference < sprite_height
+}
+
+fn get_visible_sprites<T : Bus>(bus : &mut T) -> Vec<Sprite> {
+    let mut visible_sprites = vec![];
+
+    for id in 0..64 {
+        let sprite = get_sprite(bus, id);
+
+        if sprite_is_visible(bus, sprite) {
+            if visible_sprites.len() < 8 {
+                visible_sprites.push(sprite);
+            }
+            else {
+                set_status_flag(bus, StatusFlag::SpriteOverflow, true);
+                break;
+            }
+        }
+    }
+
+    visible_sprites
+}
+
+
+fn get_sprite_tile_address<T : Bus>(bus: &mut T, sprite : Sprite) -> u16 {
+    let long_sprites = get_control_flag(bus, ControlFlag::SpriteSize);
+    if long_sprites {
+        let sprite_tile = sprite.tile as u16;
+        (sprite_tile & 0x01) * 0x1000 + (sprite_tile >> 1) * 0x20
+    } else {
+        let base_address = if get_control_flag(bus, ControlFlag::PatternSprite) {0x1000} else { 0x0000 };
+        let sprite_tile = sprite.tile as u16;
+        base_address + sprite_tile * 16
+    }
+}
+
+fn get_sprite_colors<T : Bus>(bus : &mut T, sprite : Sprite) -> [u8; 8] {
+    let screen_y = get_scanline(bus);
+    let sprite_y = sprite.y_pos as i32;
+    let vertical_flip = get_sprite_flag(sprite, SpriteFlag::SpriteVerticalFlip);
+    let base_address = get_sprite_tile_address(bus, sprite);
+    let offset = if vertical_flip {7 - (screen_y - sprite_y)} else { screen_y - sprite_y } as u16;
+    let lsb = bus.read_byte(base_address + offset + 0x00);
+    let msb = bus.read_byte(base_address + offset + 0x08);
+    merge_pixel_bits(lsb, msb)
+}
+
+fn get_sprite_attribute(sprite : Sprite) -> u8 {
+    4 + utils::t2(sprite.attribute)
+}
+
+fn get_sprite_priority(sprite : Sprite) -> Priority {
+    if get_sprite_flag(sprite, SpriteFlag::SpritePriority) {Priority::Back} else {Priority::Front}
+}
+
+fn write_to_fg_buffer<T : Bus>(bus: &mut T, screen_x : usize, colors : [u8; 8], palette_index : u8, priority : Priority){
+    for x in 0..8 {
+        let address = screen_x + x; 
+        let color_index = colors[x];
+        let pixel_info = PixelInfo{color_index, palette_index, priority};
+
+        if address < 256{
+            let current_priority = bus.fetch_ppu().fg_buffer[address].priority;
+            if current_priority == Priority::Unset {
+                bus.fetch_ppu().fg_buffer[address] = pixel_info;
+            }
+        }
+    }
+}
+
+fn read_from_fg_buffer<T : Bus>(bus: &mut T, screen_x : usize) -> PixelInfo {
+    bus.fetch_ppu().fg_buffer[screen_x]
+}
+
+fn pre_render_sprite<T : Bus>(bus: &mut T, sprite : Sprite){
+    let mut colors = get_sprite_colors(bus, sprite);
+
+    if get_sprite_flag(sprite, SpriteFlag::SpriteHorizontalFlip) {
+        colors.reverse();
+    }
+
+    let palette_index = get_sprite_attribute(sprite);
+    let priority = get_sprite_priority(sprite);
+    let screen_x = sprite.x_pos as usize;
+
+    write_to_fg_buffer(bus, screen_x, colors, palette_index, priority);
+
+    if sprite.id == 0 {
+        let alpha = utils::flatten_u8(colors);
+        set_sprite_0_x(bus, screen_x as i32);
+        set_sprite_0_alpha(bus, alpha);
+    }
+}
+
+fn pre_render_sprites<T : Bus>(bus: &mut T){
+    reset_fg_buffer(bus);
+    let render_sprites = get_mask_flag(bus, MaskFlag::RenderSprites);
+    if render_sprites {
+        let visible_sprites = get_visible_sprites(bus);
+        for sprite in visible_sprites {
+            pre_render_sprite(bus, sprite);
+        }
+    }
+
+}
 
 // Background rendering
 
@@ -33,9 +149,6 @@ fn get_tile_id<T : Bus>(bus : &mut T) -> u8 {
     bus.read_byte(address)
 }
 
-// A single byte in the attribute segment at the nametable memory has enough data for 4 tiles.
-// This function receives the entire tile, and outputs the corresponding information for the
-// required tile.
 fn get_local_attribute(tile_x : u16, tile_y : u16, global_attribute : u8) -> u8 {
     let shift_x: usize = if utils::B1(tile_x) {0x02} else {0x00};
     let shift_y: usize = if utils::B1(tile_y) {0x04} else {0x00};
@@ -73,11 +186,11 @@ fn get_tile_data<T : Bus>(bus: &mut T, tile_id : u16) -> [u8; 8] {
 }
 fn write_to_bg_buffer<T : Bus>(bus: &mut T, tile : usize, colors : [u8; 8], palette_index : u8){
     for x in 0..8 {
-       let address = tile * 8 + x; 
-       let color_index = colors[x];
-       let priority = Priority::Middle;
-       let pixel_info = PixelInfo{color_index, palette_index, priority};
-       bus.fetch_ppu().bg_buffer[address] = pixel_info;
+        let address = tile * 8 + x; 
+        let color_index = colors[x];
+        let priority = Priority::Middle;
+        let pixel_info = PixelInfo{color_index, palette_index, priority};
+        bus.fetch_ppu().bg_buffer[address] = pixel_info;
     }
 }
 fn read_from_bg_buffer<T : Bus>(bus: &mut T, screen_x : usize) -> PixelInfo {
@@ -104,6 +217,9 @@ fn pre_render_background<T : Bus>(bus : &mut T){
     }
 }
 
+
+// Rendering
+
 fn get_pixel_color<T : Bus>(bus : &mut T, pixel_info : PixelInfo) -> u8{
     let palette_index = pixel_info.palette_index as u16;
     let color_index = pixel_info.color_index as u16;
@@ -115,11 +231,29 @@ fn get_pixel_color<T : Bus>(bus : &mut T, pixel_info : PixelInfo) -> u8{
     bus.read_byte(address)
 }
 
+fn choose_pixel_info(bg_info : PixelInfo, fg_info : PixelInfo) -> PixelInfo {
+    if fg_info.priority == Priority::Unset {
+        bg_info
+    } else if fg_info.color_index == 0 {
+        bg_info
+    } else if bg_info.color_index == 0 {
+        fg_info
+    } else if fg_info.priority == Priority::Front{
+        fg_info
+    } else if fg_info.priority == Priority::Back{
+        bg_info
+    } else {
+        bg_info
+    }
+}
+
 fn render<T : Bus>(bus : &mut T, screen_x : usize){
     let screen_y = get_scanline(bus) as usize;
     let bg_pixel_info = read_from_bg_buffer(bus, screen_x);
+    let fg_pixel_info = read_from_fg_buffer(bus, screen_x);
 
-    let color = get_pixel_color(bus, bg_pixel_info);
+    let pixel_info = choose_pixel_info(bg_pixel_info, fg_pixel_info);
+    let color = get_pixel_color(bus, pixel_info);
     bus.set_pixel((screen_x, screen_y), color)
 }
 
@@ -152,6 +286,7 @@ fn handle_visible_scanline<T : Bus>(bus : &mut T){
     }
 
     if cycle == 257 {
+        pre_render_sprites(bus);
         increase_fine_y(bus);
         transfer_x(bus);
     }

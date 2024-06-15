@@ -120,3 +120,14 @@ pub fn page_cross_sum(a : u16, b : u16) -> (u16, bool){
     (output, page_cross)
 }
 
+
+pub fn flatten_u8(data : [u8; 8]) -> u8 {
+    let mut output : u8 = 0;
+    for i in 0..8 {
+        if data[i] > 0 {
+            s0(&mut output, true);
+        }
+        output = output << 1;
+    }
+    output
+}
