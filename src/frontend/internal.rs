@@ -3,7 +3,6 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use crate::coral::bus;
-use crate::coral::ppu;
 
 use super::utils::color_to_rgba;
 
@@ -14,7 +13,8 @@ pub fn err<T : std::string::ToString>(e : T) -> io::Error {
 
 pub struct Context{
     pub running : bool,
-    pub nes : bus::types::Bus
+    pub nes : bus::types::Bus,
+    pub screen : [u8; 256 * 240]
 }
 
 pub struct Textures<'a> {
@@ -32,7 +32,7 @@ pub fn create_textures(creator : &sdl2::render::TextureCreator<sdl2::video::Wind
 
 pub fn create_context() -> io::Result<Context>{
     let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/donkey_kong.nes")?;
-    let ctx = Context{running: true, nes : n};
+    let ctx = Context{running: true, nes : n, screen: [0; 256 * 240]};
 
     Ok(ctx)
 }
@@ -52,19 +52,17 @@ pub fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Res
     Ok(())
 }
 
-pub fn update_texture(ctx: &mut Context, texture_data : &mut [u8], pitch : usize){
-
+pub fn update_texture(ctx: &mut Context, texture_data : &mut [u8], _pitch : usize){
     ctx.nes.frame();
-    for y in 0..240 {
-        for x in 0..256 {
-            let address = y * pitch + x*4;
-            let color = ctx.nes.get_pixel(x, y);
-            let (r, g, b, a) = color_to_rgba(color);
-            texture_data[address + 0] = a;
-            texture_data[address + 1] = b;
-            texture_data[address + 2] = g;
-            texture_data[address + 3] = r;
-        }
+    ctx.nes.copy_to_screen(&mut ctx.screen);
+    for x in 0..(240*256) {
+        let address = x*4;
+        let color = ctx.screen[x];
+        let (r, g, b, a) = color_to_rgba(color);
+        texture_data[address + 0] = a;
+        texture_data[address + 1] = b;
+        texture_data[address + 2] = g;
+        texture_data[address + 3] = r;
     }
 }
 pub fn update_textures(textures : &mut Textures, ctx : &mut Context) -> io::Result<()>{
