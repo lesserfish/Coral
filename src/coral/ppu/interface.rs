@@ -4,12 +4,12 @@ use crate::utils;
 
 // CPU Read API
 fn read_status<T : Bus>(bus : &mut T) -> u8 {
-   let data_buffer = get_data_buffer(bus); 
-   let status = get_status(bus);
-   let byte = (status & 0xE0) | (data_buffer & 0x1F);
-   set_write_toggle(bus, false);
-   set_status_flag(bus, StatusFlag::VerticalBlank, false);
-   byte
+    let data_buffer = get_data_buffer(bus); 
+    let status = get_status(bus);
+    let byte = (status & 0xE0) | (data_buffer & 0x1F);
+    set_write_toggle(bus, false);
+    set_status_flag(bus, StatusFlag::VerticalBlank, false);
+    byte
 }
 fn read_data<T : Bus>(bus : &mut T) -> u8 {
     let vram = get_vram(bus);
@@ -49,11 +49,11 @@ pub fn cpu_read<T : Bus>(bus : &mut T, address : u16) -> u8 {
 // CPU Write API
 
 fn write_control<T : Bus>(bus : &mut T, byte : u8){
-   set_control(bus, byte); 
-   let nametable_x = utils::b0(byte);
-   let nametable_y = utils::b1(byte);
-   set_t_nametable_x(bus, nametable_x);
-   set_t_nametable_y(bus, nametable_y);
+    set_control(bus, byte); 
+    let nametable_x = utils::b0(byte);
+    let nametable_y = utils::b1(byte);
+    set_t_nametable_x(bus, nametable_x);
+    set_t_nametable_y(bus, nametable_y);
 }
 
 fn write_mask<T : Bus>(bus : &mut T, byte : u8){
@@ -102,7 +102,6 @@ fn write_address<T : Bus>(bus : &mut T, byte : u8){
 fn write_data<T : Bus>(bus : &mut T, byte : u8){
     let vram = get_vram(bus);
     bus.write_byte(vram, byte);
-
     let increment_mode = get_control_flag(bus, ControlFlag::IncrementMode);
     if increment_mode {
         set_vram(bus, vram + 32);

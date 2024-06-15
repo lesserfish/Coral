@@ -53,7 +53,7 @@ fn get_tile_attribute<T : Bus>(bus : &mut T) -> u8 {
     let nametable_y = get_v_nametable_y(bus);
     let tile_x = get_v_coarse_x(bus) as u16;
     let tile_y = get_v_coarse_y(bus) as u16;
-    let base_address = nametable_base_address(nametable_x, nametable_y);
+    let base_address = 0x23C0 + nametable_base_address(nametable_x, nametable_y);
     let offset = 8 * (tile_y >> 2) + (tile_x >> 2);
 
     let address = base_address + offset;
@@ -71,13 +71,12 @@ fn get_tile_data<T : Bus>(bus: &mut T, tile_id : u16) -> [u8; 8] {
     merge_pixel_bits(lsb, msb)
 }
 fn write_to_bg_buffer<T : Bus>(bus: &mut T, tile : usize, colors : [u8; 8], palette_index : u8){
-    let mut bg_buffer = bus.fetch_ppu().bg_buffer;
-    for x in 0..7 {
+    for x in 0..8 {
        let address = tile * 8 + x; 
        let color_index = colors[x];
        let priority = Priority::Middle;
        let pixel_info = PixelInfo{color_index, palette_index, priority};
-       bg_buffer[address] = pixel_info;
+       bus.fetch_ppu().bg_buffer[address] = pixel_info;
     }
 }
 fn read_from_bg_buffer<T : Bus>(bus: &mut T, screen_x : usize) -> PixelInfo {
@@ -104,17 +103,15 @@ fn pre_render_background<T : Bus>(bus : &mut T){
     }
 }
 
-//
-
 fn get_pixel_color<T : Bus>(bus : &mut T, pixel_info : PixelInfo) -> u8{
-   let palette_index = pixel_info.palette_index as u16;
-   let color_index = pixel_info.color_index as u16;
+    let palette_index = pixel_info.palette_index as u16;
+    let color_index = pixel_info.color_index as u16;
 
-   let base_address = 0x3F00;
-   let offset = 4 * palette_index + color_index;
-   
-   let address = base_address + offset;
-   bus.read_byte(address)
+    let base_address = 0x3F00;
+    let offset = 4 * palette_index + color_index;
+
+    let address = base_address + offset;
+    bus.read_byte(address)
 }
 
 fn render<T : Bus>(bus : &mut T, screen_x : usize){

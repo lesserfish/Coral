@@ -171,8 +171,8 @@ pub fn nmi<T : Bus>(bus : &mut T) {
 }
 
 pub fn reset<T : Bus>(bus : &mut T) {
-    let irq_lsb = bus.read_byte(0xFFFA);
-    let irq_msb = bus.read_byte(0xFFFB);
+    let irq_lsb = bus.read_byte(0xFFFC);
+    let irq_msb = bus.read_byte(0xFFFD);
     let jump_address = join_bytes(irq_msb, irq_lsb);
     set_pc(bus, jump_address);
     set_sp(bus, 0xFD);
