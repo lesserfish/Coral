@@ -1,7 +1,7 @@
 pub trait Bus {
     fn read_byte(&mut self, address : u16) -> u8;
     fn write_byte(&mut self, address : u16, byte : u8);
-    fn set_pixel(&mut self, position : (u16, u16), color : u8);
+    fn set_pixel(&mut self, position : (usize, usize), color : u8);
     fn trigger_nmi(&mut self);
     fn fetch_ppu(&mut self) -> &mut PPU;
 }

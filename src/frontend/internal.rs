@@ -3,7 +3,6 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use crate::coral::bus;
-use crate::frontend::utils;
 
 use super::utils::color_to_rgba;
 
@@ -52,7 +51,8 @@ pub fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Res
     Ok(())
 }
 
-pub fn update_pattern(ctx: &mut Context, texture_data : &mut [u8], pitch : usize){
+pub fn update_texture(ctx: &mut Context, texture_data : &mut [u8], pitch : usize){
+    ctx.nes.tick();
     for y in 0..240 {
         for x in 0..256 {
             let address = y * pitch + x*4;
@@ -66,7 +66,7 @@ pub fn update_pattern(ctx: &mut Context, texture_data : &mut [u8], pitch : usize
     }
 }
 pub fn update_textures(textures : &mut Textures, ctx : &mut Context) -> io::Result<()>{
-    textures.pattern.with_lock(None, |d, p| update_pattern(ctx, d, p)).map_err(err)?;
+    textures.pattern.with_lock(None, |d, p| update_texture(ctx, d, p)).map_err(err)?;
     Ok(())
 }
 

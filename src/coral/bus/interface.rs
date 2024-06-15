@@ -165,8 +165,8 @@ impl ppu::Bus for Bus {
         else if address <= 0x3EFF { self.ppu_write_nt(address, byte) }
         else if address <= 0x3FFF { self.ppu_write_pal(address, byte) }
     }
-    fn set_pixel(&mut self, (x, y): (u16, u16), color : u8) {
-        let address = (y * 256 + x) as usize;
+    fn set_pixel(&mut self, (x, y): (usize, usize), color : u8) {
+        let address = y * 256 + x;
         self.data.display[address] = color; 
     }
     fn trigger_nmi(&mut self) {

@@ -124,3 +124,20 @@ pub fn cpu_write<T : Bus>(bus : &mut T, address : u16, byte : u8){
         _ => {}
     }
 }
+
+// DMA
+
+pub fn dma_port<T : Bus>(bus: &mut T, address : u16, byte : u8){
+    bus.fetch_ppu().oam_data[address as usize] = byte;
+}
+
+
+// 
+
+impl PPU {
+    pub fn complete(&mut self) -> bool {
+        let output = self.context.complete;
+        self.context.complete = false;
+        output
+    }
+}
