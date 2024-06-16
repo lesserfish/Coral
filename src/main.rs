@@ -2,7 +2,7 @@ extern crate coral;
 use std::env;
 mod frontend;
 
-pub fn main() {
+pub fn main() -> std::io::Result<()>{
     let args: Vec<String> = env::args().collect();
 
     if args.len() <= 1 {
@@ -11,5 +11,7 @@ pub fn main() {
     }
 
     let filepath = args[1].clone();
-    frontend::main(filepath);
+    frontend::main(filepath)?;
+
+    Ok(())
 }
