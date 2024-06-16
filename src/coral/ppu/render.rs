@@ -19,7 +19,8 @@ fn merge_pixel_bits(lsb : u8, msb : u8) -> [u8; 8]{
 }
 
 // Sprite rendering
-//
+
+
 fn reset_fg_buffer<T : Bus>(bus : &mut T){
     bus.fetch_ppu().fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Middle}; 32 * 8];
 }
@@ -217,6 +218,62 @@ fn pre_render_background<T : Bus>(bus : &mut T){
     }
 }
 
+// Sprite 0 Hit Logic
+
+fn rendering_s0<T : Bus>(bus : &mut T, screen_x : i32) -> bool{
+    let sprite0_x = get_sprite_0_x(bus);
+    if sprite0_x >= 0 {
+        let distance = screen_x - sprite0_x;
+        distance >= 0 && distance < 8
+    } else {
+        false
+    }
+}
+
+fn s0_opaque<T : Bus>(bus : &mut T, screen_x : usize) -> bool {
+    let sprite0_x = get_sprite_0_x(bus) as usize;
+    let distance = screen_x - sprite0_x;
+    let alpha = get_sprite_0_alpha(bus) << distance;
+    utils::b7(alpha)
+}
+
+fn bg_opaque<T : Bus>(bus : &mut T, screen_x : usize) -> bool {
+    let pixel_info = read_from_bg_buffer(bus, screen_x);
+    pixel_info.color_index > 0
+}
+fn precheck_s0<T : Bus>(bus : &mut T, screen_x : usize){
+    if rendering_s0(bus, screen_x as i32) {
+        if !get_status_flag(bus, StatusFlag::SpriteZeroHit) {
+            if s0_opaque(bus, screen_x){
+                if bg_opaque(bus, screen_x){
+                    if get_mask_flag(bus, MaskFlag::RenderBackground){
+                        if get_mask_flag(bus, MaskFlag::RenderSprites){
+                            let render_sprites_left = get_mask_flag(bus, MaskFlag::RenderSpritesLeft);
+                            let render_background_left = get_mask_flag(bus, MaskFlag::RenderBackgroundLeft);
+                            let last_check = if render_sprites_left || render_background_left {
+                                screen_x >= 8
+                            } else {
+                                true
+                            };
+                            if last_check {
+                                set_sprite_0_hit_position(bus, screen_x as i32);
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn check_s0<T : Bus>(bus : &mut T){
+    let screen_x = get_cycle(bus) - 1;
+    let s0_hit = get_sprite_0_hit_position(bus);
+    if screen_x == s0_hit {
+        set_status_flag(bus, StatusFlag::SpriteZeroHit, true);
+    }
+}
 
 // Rendering
 
@@ -260,6 +317,7 @@ fn render<T : Bus>(bus : &mut T, screen_x : usize){
 fn pre_render<T : Bus>(bus : &mut T){
     for x in 0..256 {
         render(bus, x);
+        precheck_s0(bus, x);
     }
 }
 
@@ -284,7 +342,9 @@ fn handle_visible_scanline<T : Bus>(bus : &mut T){
         pre_render_background(bus);
         pre_render(bus);
     }
-
+    if cycle >= 0 && cycle < 256 {
+        check_s0(bus)
+    }
     if cycle == 257 {
         pre_render_sprites(bus);
         increase_fine_y(bus);

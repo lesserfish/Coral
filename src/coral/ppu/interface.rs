@@ -73,12 +73,13 @@ fn write_scroll<T : Bus>(bus : &mut T, byte : u8){
     let write_toggle = get_write_toggle(bus);
     if write_toggle {
         set_write_toggle(bus, false);
-        set_t_coarse_x(bus, utils::t5(byte >> 3));
-        set_fine_x(bus, utils::t3(byte));
-    } else {
-        set_write_toggle(bus, true);
         set_t_coarse_y(bus, utils::t5(byte >> 3));
         set_t_fine_y(bus, utils::t3(byte));
+
+    } else {
+        set_write_toggle(bus, true);
+        set_t_coarse_x(bus, utils::t5(byte >> 3));
+        set_fine_x(bus, utils::t3(byte));
     }
 }
 
