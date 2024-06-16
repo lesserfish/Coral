@@ -291,10 +291,12 @@ fn get_pixel_color<T : Bus>(bus : &mut T, pixel_info : PixelInfo) -> u8{
 fn choose_pixel_info(bg_info : PixelInfo, fg_info : PixelInfo) -> PixelInfo {
     if fg_info.priority == Priority::Unset {
         bg_info
-    } else if fg_info.color_index == 0 {
-        bg_info
+    } else if bg_info.color_index == 0 && fg_info.color_index == 0 {
+        PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Middle}
     } else if bg_info.color_index == 0 {
         fg_info
+    } else if fg_info.color_index == 0 {
+        bg_info
     } else if fg_info.priority == Priority::Front{
         fg_info
     } else if fg_info.priority == Priority::Back{
@@ -342,7 +344,7 @@ fn handle_visible_scanline<T : Bus>(bus : &mut T){
         pre_render_background(bus);
         pre_render(bus);
     }
-    if cycle >= 0 && cycle < 256 {
+    if cycle >= 1 && cycle < 257 {
         check_s0(bus)
     }
     if cycle == 257 {
