@@ -53,17 +53,24 @@ impl Cartridge {
         self.prg_data[mapped_address]
     }
     pub fn cpu_write(&mut self, address : u16, byte : u8){
-        let mapped_address = self.mapper.cpu_w_map(address, byte) as usize;
-        self.prg_data[mapped_address] = byte;
-
+        match self.mapper.cpu_w_map(address, byte) {
+            Some(mapped_address) => {
+                self.prg_data[mapped_address as usize] = byte; 
+            }
+            None => {}
+        }
     }
     pub fn ppu_read(&mut self, address : u16) -> u8{
         let mapped_address = self.mapper.ppu_r_map(address) as usize;
         self.chr_data[mapped_address]
     }
     pub fn ppu_write(&mut self, address : u16, byte : u8){
-        let mapped_address = self.mapper.ppu_w_map(address, byte) as usize;
-        self.chr_data[mapped_address] = byte;
+        match self.mapper.ppu_w_map(address, byte) {
+            Some(mapped_address) => {
+                self.chr_data[mapped_address as usize] = byte;
+            }
+            None => {}
+        }
     }
     pub fn reset(&mut self){
         self.mapper.reset();
