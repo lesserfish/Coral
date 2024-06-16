@@ -141,7 +141,7 @@ fn setup_mapper(cart : &mut Cartridge) -> io::Result<()> {
     Ok(())
 }
 
-pub fn load_cartridge<T : AsRef<Path>>(filepath : T) -> io::Result<Cartridge> {
+pub fn load<T : AsRef<Path>>(filepath : T) -> io::Result<Cartridge> {
     let mut cart = new_cartridge();
     let mut file = File::open(filepath)?;
     load_header(&mut file, &mut cart)?;
