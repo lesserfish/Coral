@@ -11,5 +11,8 @@
 - [X] Implement the PPU core methods
 - [X] Implement background rendering (with prerendering)
 - [X] Implement foreground rendering
-- [ ] Fully rendering
+- [X] Fully rendering
+- [X] Playable
 - [ ] Implement multithreading
+- [ ] Implement Audio
+- [ ] Implement more mappers
