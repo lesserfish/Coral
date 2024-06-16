@@ -14,7 +14,8 @@ pub fn err<T : std::string::ToString>(e : T) -> io::Error {
 pub struct Context{
     pub running : bool,
     pub nes : bus::types::Bus,
-    pub screen : [u8; 256 * 240]
+    pub screen : [u8; 256 * 240],
+    pub controller : u8
 }
 
 pub struct Textures<'a> {
@@ -32,20 +33,51 @@ pub fn create_textures(creator : &sdl2::render::TextureCreator<sdl2::video::Wind
 
 pub fn create_context() -> io::Result<Context>{
     let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/Super Mario Bros. (World).nes")?;
-    let ctx = Context{running: true, nes : n, screen: [0; 256 * 240]};
+    let ctx = Context{running: true, nes : n, screen: [0; 256 * 240], controller: 0};
 
     Ok(ctx)
 }
 
 // Loop
 
+pub fn handle_keydown(ctx : &mut Context, keycode : Keycode){
+    match keycode {
+        Keycode::Q => {ctx.running = false}
+        Keycode::Z => {ctx.controller |= 0x40}
+        Keycode::X => {ctx.controller |= 0x80}
+        Keycode::Up => {ctx.controller |= 0x08}
+        Keycode::Down => {ctx.controller |= 0x04}
+        Keycode::Left => {ctx.controller |= 0x02}
+        Keycode::Right => {ctx.controller |= 0x01}
+        Keycode::Return => {ctx.controller |= 0x10}
+        Keycode::Backspace => {ctx.controller |= 0x20}
+        _ => {}
+    }
+}
+pub fn handle_keyup(ctx : &mut Context, keycode : Keycode ){
+    match keycode {
+        Keycode::Z => {ctx.controller &= !0x40}
+        Keycode::X => {ctx.controller &= !0x80}
+        Keycode::Up => {ctx.controller &= !0x08}
+        Keycode::Down => {ctx.controller &= !0x04}
+        Keycode::Left => {ctx.controller &= !0x02}
+        Keycode::Right => {ctx.controller &= !0x01}
+        Keycode::Return => {ctx.controller &= !0x10}
+        Keycode::Backspace => {ctx.controller &= !0x20}
+        _ => {}
+    }
+}
+
 pub fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Result<()>{
     for event in event_pump.poll_iter() {
         match event {
-            Event::Quit {..} |
-            Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    ctx.running = false;
-                },
+            Event::Quit {..}  => {ctx.running = false;}
+            Event::KeyDown {keycode: Some(k), ..} => {
+               handle_keydown(ctx, k); 
+            }
+            Event::KeyUp { keycode: Some(k), ..} => {
+                handle_keyup(ctx, k);
+            }
             _ => {}
         }
     }
@@ -55,6 +87,7 @@ pub fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Res
 pub fn update_texture(ctx: &mut Context, texture_data : &mut [u8], _pitch : usize){
     ctx.nes.frame();
     ctx.nes.copy_to_screen(&mut ctx.screen);
+    ctx.nes.set_controller_a(ctx.controller);
     for x in 0..(240*256) {
         let address = x*4;
         let color = ctx.screen[x];
