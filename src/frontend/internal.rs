@@ -31,8 +31,8 @@ pub fn create_textures(creator : &sdl2::render::TextureCreator<sdl2::video::Wind
     Ok(textures)
 }
 
-pub fn create_context() -> io::Result<Context>{
-    let n = bus::load("/home/lesserfish/Documents/Code/Shrimp/Tools/Roms/Ice Climber (USA, Europe, Korea) (En).nes")?;
+pub fn create_context(filepath : String) -> io::Result<Context>{
+    let n = bus::load(filepath)?;
     let ctx = Context{running: true, nes : n, screen: [0; 256 * 240], controller: 0};
 
     Ok(ctx)

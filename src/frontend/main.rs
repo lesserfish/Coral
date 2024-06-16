@@ -1,8 +1,16 @@
+use std::env;
 use std::io;
 use crate::frontend::internal::*;
 
 pub fn main()-> io::Result<()> {
-    //
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() <= 1 {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "No nes file given"));
+    }
+
+    let filepath = args[1].clone();
+
     // Initialize SDL
 
     let sdl = sdl2::init().map_err(err)?;
@@ -14,7 +22,7 @@ pub fn main()-> io::Result<()> {
 
     // Initialize Context
 
-    let mut ctx = create_context()?;
+    let mut ctx = create_context(filepath)?;
     let mut textures = create_textures(&creator)?;
 
     while ctx.running {
