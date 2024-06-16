@@ -1,7 +1,6 @@
 pub mod types;
 mod mapper0;
 
-use std::fmt::format;
 use std::io;
 use std::io::Error;
 use std::io::ErrorKind;
