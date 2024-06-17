@@ -1,3 +1,44 @@
+use std::io;
+use std::sync::Arc;
+use std::sync::RwLock;
+
+pub fn err<T : std::string::ToString>(e : T) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, e.to_string())
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum Command {
+    Start,
+    Stop,
+    Exit
+}
+
+#[derive(PartialEq)]
+pub enum State {
+    Running,
+    Paused,
+    Exit
+}
+
+pub struct Data {
+    pub screen : RwLock<[u8; 256 * 240]>,
+    pub controller : RwLock<u8>,
+    pub commands : RwLock<Vec<Command>>,
+}
+
+
+pub fn new() -> (Arc<Data>, Arc<Data>){
+   let screen = RwLock::new([0; 256 * 240]); 
+   let controller = RwLock::new(0);
+   let commands = RwLock::new(vec![]);
+
+   let shared_data = Data{screen, controller, commands};
+   let arc = Arc::new(shared_data);
+   let a1 = arc.clone();
+   let a2 = arc.clone();
+   (a1, a2)
+}
+
 pub fn color_to_rgba(color : u8) -> (u8, u8, u8, u8){
     match color {
         0x00 => { (084, 084, 084, 255) } 

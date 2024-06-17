@@ -1,7 +1,9 @@
-mod internal;
-mod utils;
+pub mod renderer;
+pub mod emulator;
+mod shared;
 pub mod main;
-pub use main::main;
+
+pub use main::*;
 
 
 

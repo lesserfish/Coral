@@ -88,7 +88,7 @@ pub fn load<T : AsRef<Path>>(filepath : T) -> Result<Bus> {
     let context = Context{dma_page: 0, dma_byte: 0, dma_cycle: 0, dma_hold: false, clock: 0};
     let cpu = mos::new();
     let ppu = ppu::new();
-    let cart = cartridge::load_cartridge(filepath)?;
+    let cart = cartridge::load(filepath)?;
     let data = Data { cpu_ram: [0; 0x800], nt_ram: [0; 0x800], pal_ram: [0; 0x20], display: [0x0; 256 * 240] };
     let controller_a = controller::new();
     let controller_b = controller::new();
