@@ -72,7 +72,8 @@ fn get_sprite_colors<T : Bus>(bus : &mut T, sprite : Sprite) -> [u8; 8] {
     let sprite_y = sprite.y_pos as i32;
     let vertical_flip = get_sprite_flag(sprite, SpriteFlag::SpriteVerticalFlip);
     let base_address = get_sprite_tile_address(bus, sprite);
-    let offset = if vertical_flip {7 - (screen_y - sprite_y)} else { screen_y - sprite_y } as u16;
+    let y_offset = if vertical_flip {7 - (screen_y - sprite_y)} else { screen_y - sprite_y } as u16;
+    let offset = y_offset + 8 * (y_offset >> 3);
     let lsb = bus.read_byte(base_address + offset + 0x00);
     let msb = bus.read_byte(base_address + offset + 0x08);
     merge_pixel_bits(lsb, msb)
