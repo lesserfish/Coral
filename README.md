@@ -13,6 +13,6 @@
 - [X] Implement foreground rendering
 - [X] Fully rendering
 - [X] Playable
-- [ ] Implement multithreading
+- [X] Implement multithreading
 - [ ] Implement Audio
 - [ ] Implement more mappers

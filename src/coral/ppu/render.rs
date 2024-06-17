@@ -22,7 +22,7 @@ fn merge_pixel_bits(lsb : u8, msb : u8) -> [u8; 8]{
 
 
 fn reset_fg_buffer<T : Bus>(bus : &mut T){
-    bus.fetch_ppu().fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Unset}; 32 * 8];
+    bus.fetch_ppu().fg_buffer = [PixelInfo{color_index: 0, palette_index: 0, priority: Priority::Middle}; 32 * 8];
 }
 
 
@@ -94,7 +94,7 @@ fn write_to_fg_buffer<T : Bus>(bus: &mut T, screen_x : usize, colors : [u8; 8], 
 
         if address < 256{
             let current_pixel= bus.fetch_ppu().fg_buffer[address];
-            if current_pixel.priority == Priority::Unset || current_pixel.color_index == 0 {
+            if current_pixel.priority != Priority::Front || current_pixel.color_index == 0 {
                 bus.fetch_ppu().fg_buffer[address] = pixel_info;
             }
         }

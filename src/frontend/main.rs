@@ -1,35 +1,16 @@
-use std::env;
-use std::io;
-use crate::frontend::internal::*;
+use super::renderer;
+use super::emulator;
+use super::shared;
+use std::thread;
 
-pub fn main()-> io::Result<()> {
-    let args: Vec<String> = env::args().collect();
+pub fn main(filepath : String) -> std::io::Result<()>{
+    let (s1, s2)= shared::new();
 
-    if args.len() <= 1 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "No nes file given"));
-    }
+    let r = thread::spawn(move || {renderer::main(s1)});
+    let e = thread::spawn(move || {emulator::main(filepath, s2)});
 
-    let filepath = args[1].clone();
-
-    // Initialize SDL
-
-    let sdl = sdl2::init().map_err(err)?;
-    let video = sdl.video().map_err(err)?;
-    let window = video.window("Coral", 256 * 3, 240 * 3).position_centered().build().map_err(err)?;
-    let mut canvas = window.into_canvas().accelerated().build().map_err(err)?;
-    let creator = canvas.texture_creator();
-    let mut event_pump = sdl.event_pump().unwrap();
-
-    // Initialize Context
-
-    let mut ctx = create_context(filepath)?;
-    let mut textures = create_textures(&creator)?;
-
-    while ctx.running {
-        control(&mut event_pump, &mut ctx)?;
-        update_textures(&mut textures, &mut ctx)?;
-        render(&mut canvas, &mut textures)?;
-    }
+    e.join().unwrap()?;
+    r.join().unwrap()?;
 
     Ok(())
 }

@@ -46,6 +46,7 @@ fn process_header(buffer : &mut [u8; 12], cart : &mut Cartridge) -> io::Result<(
 
     cart.header.h_prg_size = prg_size;
     cart.header.h_chr_size = chr_size;
+    cart.header.h_chr_ram = if chr_size == 0 { true } else { false }; 
 
     // Flag 6
     let flag6 = buffer[2];
@@ -124,9 +125,12 @@ fn load_prg(file : &mut File, cart : &mut Cartridge) -> io::Result<()> {
 }
 
 fn load_chr(file : &mut File, cart : &mut Cartridge) -> io::Result<()> {
-    let buffer_size = 0x2000 * (cart.header.h_chr_size as usize);
-    cart.chr_data.resize(buffer_size, 0);
-    file.read_exact(&mut cart.chr_data)?;
+    let chr_size = if cart.header.h_chr_ram { 1 } else { cart.header.h_chr_size } as usize;
+    let chr_data_size = 0x2000 * chr_size;
+    cart.chr_data.resize(chr_data_size, 0);
+
+    let buffer_size = 0x2000 * cart.header.h_chr_size as usize;
+    file.read_exact(&mut cart.chr_data[..buffer_size])?;
 
     Ok(())
 }
@@ -141,7 +145,7 @@ fn setup_mapper(cart : &mut Cartridge) -> io::Result<()> {
     Ok(())
 }
 
-pub fn load_cartridge<T : AsRef<Path>>(filepath : T) -> io::Result<Cartridge> {
+pub fn load<T : AsRef<Path>>(filepath : T) -> io::Result<Cartridge> {
     let mut cart = new_cartridge();
     let mut file = File::open(filepath)?;
     load_header(&mut file, &mut cart)?;
