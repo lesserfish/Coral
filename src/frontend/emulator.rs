@@ -12,7 +12,7 @@ struct Context {
 
 fn create_context(filepath : String, shared_data : Arc<shared::Data>) -> io::Result<Context> {
     let nes = bus::load(filepath)?;
-    let state = State::Paused;
+    let state = State::Running;
 
     Ok(Context{nes, shared_data, state})
 }

@@ -18,7 +18,7 @@ struct Context<'a>{
 }
 
 fn create_context<'a>(shared_data : Arc<shared::Data>, creator : &'a TextureCreator<WindowContext>) -> io::Result<Context<'a>> {
-    let state = State::Paused;
+    let state = State::Running;
     let controller = 0;
     let screen_texture = creator.create_texture_streaming(PixelFormatEnum::RGBA8888, 256, 240).map_err(err)?;
 
