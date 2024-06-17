@@ -9,17 +9,19 @@ pub struct Mapper0 {
 }
 
 impl MapperT for Mapper0 {
-    fn cpu_r_mapt(&mut self, address : u16) -> u16 {
-        if self.prg_banks > 1 { address & 0x7FFF } else { address & 0x3FFF }
+    fn cpu_r_mapt(&mut self, address : u16) -> usize {
+        let uaddress = address as usize;
+        if self.prg_banks > 1 { uaddress & 0x7FFF } else { uaddress & 0x3FFF }
     }
-    fn cpu_w_mapt(&mut self, address : u16, _byte : u8) -> Option<u16> {
-        if self.prg_banks > 1 { Some(address & 0x7FFF) } else { Some(address & 0x3FFF) }
+    fn cpu_w_mapt(&mut self, address : u16, _byte : u8) -> Option<usize> {
+        let uaddress = address as usize;
+        if self.prg_banks > 1 { Some(uaddress & 0x7FFF) } else { Some(uaddress & 0x3FFF) }
     }
-    fn ppu_r_mapt(&mut self, address : u16) -> u16 {
-        address
+    fn ppu_r_mapt(&mut self, address : u16) -> usize {
+        address as usize
     }
-    fn ppu_w_mapt(&mut self, address : u16, _byte : u8) -> Option<u16> {
-        Some(address)
+    fn ppu_w_mapt(&mut self, address : u16, _byte : u8) -> Option<usize> {
+        Some(address as usize)
     }
     fn clone_self(&self) -> Box<dyn MapperT> {
         Box::new(self.clone())

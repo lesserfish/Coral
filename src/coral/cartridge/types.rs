@@ -49,25 +49,26 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn cpu_read(&mut self, address : u16) -> u8{
-        let mapped_address = self.mapper.cpu_r_map(address) as usize;
-        self.prg_data[mapped_address]
+        let mapped_address = self.mapper.cpu_r_map(address);
+        let byte = self.prg_data[mapped_address];
+        byte
     }
     pub fn cpu_write(&mut self, address : u16, byte : u8){
         match self.mapper.cpu_w_map(address, byte) {
             Some(mapped_address) => {
-                self.prg_data[mapped_address as usize] = byte; 
+                self.prg_data[mapped_address] = byte; 
             }
             None => {}
         }
     }
     pub fn ppu_read(&mut self, address : u16) -> u8{
-        let mapped_address = self.mapper.ppu_r_map(address) as usize;
+        let mapped_address = self.mapper.ppu_r_map(address);
         self.chr_data[mapped_address]
     }
     pub fn ppu_write(&mut self, address : u16, byte : u8){
         match self.mapper.ppu_w_map(address, byte) {
             Some(mapped_address) => {
-                self.chr_data[mapped_address as usize] = byte;
+                self.chr_data[mapped_address] = byte;
             }
             None => {}
         }
