@@ -9,7 +9,6 @@
 - [X] Implement multithreading for rendering vs emulation
 - [ ] Implement Audio
 - [ ] Implement Zapper
-- [ ] Implement Zapper
 
 ## Mappers
 - [X] Mapper 0 (NROM)

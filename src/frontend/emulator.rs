@@ -55,8 +55,12 @@ pub fn main(filepath : String, shared_data : Arc<shared::Data>) -> io::Result<()
         handle_commands(&mut ctx)?;
         update_controller(&mut ctx)?;
         if ctx.state == State::Running {
+            let time= std::time::Instant::now();
             ctx.nes.frame();
             save_screen(&mut ctx)?;
+            let ellapsed_time = time.elapsed();
+            let sleep_duration = std::time::Duration::from_micros(16000) - ellapsed_time;
+            std::thread::sleep(sleep_duration);
         }
     }
 
