@@ -93,9 +93,8 @@ fn write_to_fg_buffer<T : Bus>(bus: &mut T, screen_x : usize, colors : [u8; 8], 
         let color_index = colors[x];
         let pixel_info = PixelInfo{color_index, palette_index, priority};
 
-        if address < 256{
-            let current_pixel= bus.fetch_ppu().fg_buffer[address];
-            if current_pixel.priority != Priority::Front || current_pixel.color_index == 0 {
+        if address < 256 {
+            if pixel_info.color_index > 0 {
                 bus.fetch_ppu().fg_buffer[address] = pixel_info;
             }
         }
@@ -130,7 +129,8 @@ fn pre_render_sprites<T : Bus>(bus: &mut T){
     reset_fg_buffer(bus);
     let render_sprites = get_mask_flag(bus, MaskFlag::RenderSprites);
     if render_sprites {
-        let visible_sprites = get_visible_sprites(bus);
+        let mut visible_sprites = get_visible_sprites(bus);
+        visible_sprites.reverse();
         for sprite in visible_sprites {
             pre_render_sprite(bus, sprite);
         }
