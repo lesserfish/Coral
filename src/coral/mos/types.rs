@@ -1,11 +1,7 @@
 pub trait Bus {
     fn read_byte(&mut self, address: u16) -> u8;
     fn write_byte(&mut self, address: u16, byte: u8);
-    fn peek_byte(&self, address: u16) -> u8;
     fn fetch_mos(&mut self) -> &mut Mos;
-    fn get_mos(&mut self) -> Mos {
-        *self.fetch_mos()
-    }
 }
 
 #[derive(Copy, Clone, Debug)] 
@@ -18,6 +14,7 @@ pub struct Registers {
     pub ps:  u8,
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum Flag {
     Carry,
     Zero,
@@ -44,6 +41,7 @@ pub struct Mos
     pub clock : u64
 }
 
+#[derive(Copy, Clone, Debug)] 
 pub enum AddrMode 
 {
     Implicit,
@@ -53,6 +51,7 @@ pub enum AddrMode
     ZeropageX,
     ZeropageY,
     Relative,
+    Absolute,
     AbsoluteX,
     AbsoluteY,
     Indirect,
@@ -62,11 +61,11 @@ pub enum AddrMode
 
 // Creation
 
-pub fn new_mos() -> Mos
+pub fn new() -> Mos
 {
     return Mos {
             registers : Registers { pc: 0, sp: 0, acc: 0, idx: 0, idy: 0, ps: 0 },
-            context : Context { compĺete: true, decimal_enabled: false, super_instruction: false },
+            context : Context { compĺete: true, decimal_enabled: false, super_instruction: false},
             cycles : 0,
             clock : 0
             };

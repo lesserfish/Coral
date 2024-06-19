@@ -1,2 +1,4 @@
-pub mod mos;
+pub mod coral;
+
+pub use coral::*;
 
