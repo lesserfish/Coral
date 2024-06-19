@@ -50,6 +50,7 @@ fn save_screen(ctx : &mut Context) -> io::Result<()>{
 
 pub fn main(filepath : String, shared_data : Arc<shared::Data>) -> io::Result<()>{
     let mut ctx = create_context(filepath, shared_data)?;
+    let frame_duration = std::time::Duration::from_micros(16000);
 
     while ctx.state != State::Exit {
         handle_commands(&mut ctx)?;
@@ -57,9 +58,9 @@ pub fn main(filepath : String, shared_data : Arc<shared::Data>) -> io::Result<()
         if ctx.state == State::Running {
             let time= std::time::Instant::now();
             ctx.nes.frame();
-            save_screen(&mut ctx)?;
             let ellapsed_time = time.elapsed();
-            let sleep_duration = std::time::Duration::from_micros(16000) - ellapsed_time;
+            let sleep_duration = if ellapsed_time > frame_duration {std::time::Duration::from_millis(0)} else {frame_duration - ellapsed_time};
+            save_screen(&mut ctx)?;
             std::thread::sleep(sleep_duration);
         }
     }
