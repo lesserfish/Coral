@@ -32,7 +32,6 @@ pub struct Context {
 #[derive(Copy, Clone, Debug, PartialEq)] 
 pub enum Priority {
     Front,
-    Middle,
     Back,
     Unset
 }
