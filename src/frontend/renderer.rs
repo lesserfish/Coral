@@ -1,6 +1,8 @@
 use std::io;
 use std::sync::Arc;
 use sdl2::pixels::PixelFormatEnum;
+use sdl2::controller::Button;
+use sdl2::controller::Axis;
 use sdl2::render::TextureCreator;
 use sdl2::video::WindowContext;
 use sdl2::event::Event;
@@ -75,6 +77,34 @@ fn handle_keyup(ctx : &mut Context, keycode : Keycode ){
     }
 }
 
+fn handle_controller_down(ctx : &mut Context, button : Button){
+    match button {
+        Button::DPadRight => {ctx.controller |= 0x01}
+        Button::DPadLeft  => {ctx.controller |= 0x02}
+        Button::DPadDown  => {ctx.controller |= 0x04}
+        Button::DPadUp    => {ctx.controller |= 0x08}
+        Button::Start     => {ctx.controller |= 0x10}
+        Button::Back      => {ctx.controller |= 0x20}
+        Button::A         => {ctx.controller |= 0x40}
+        Button::B         => {ctx.controller |= 0x80}
+        _ => {}
+    }
+}
+fn handle_controller_up(ctx : &mut Context, button : Button){
+    match button {
+        Button::DPadRight  => {ctx.controller &= !0x01}
+        Button::DPadLeft   => {ctx.controller &= !0x02}
+        Button::DPadDown   => {ctx.controller &= !0x04}
+        Button::DPadUp     => {ctx.controller &= !0x08}
+        Button::Start      => {ctx.controller &= !0x10}
+        Button::Back       => {ctx.controller &= !0x20}
+        Button::A          => {ctx.controller &= !0x40}
+        Button::B          => {ctx.controller &= !0x80}
+        _ => {}
+    }
+}
+
+
 fn handle_exit(ctx : &mut Context) -> io::Result<()>{
     ctx.state = State::Exit;
     send_command(ctx, shared::Command::Exit)?;
@@ -91,6 +121,36 @@ fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Result<
             }
             Event::KeyUp { keycode: Some(k), ..} => {
                 handle_keyup(ctx, k);
+            }
+            Event::ControllerButtonDown {button, .. } => {
+                handle_controller_down(ctx, button);
+            }
+            Event::ControllerButtonUp { button, .. } => {
+                handle_controller_up(ctx, button);
+            }
+            Event::ControllerAxisMotion { axis, value, .. } => {
+                let lvalue = value as i64;
+                if axis == Axis::LeftX {
+                    if lvalue.abs() < 0x1FF {
+                        handle_controller_up(ctx, Button::DPadRight);
+                        handle_controller_up(ctx, Button::DPadLeft);
+                    } else if lvalue > 0xFFF {
+                        handle_controller_down(ctx, Button::DPadRight);
+                    } else {
+                        handle_controller_down(ctx, Button::DPadLeft);
+                    }
+                }
+                else if axis == Axis::LeftY {
+                    if lvalue.abs() < 0x1FF {
+                        handle_controller_up(ctx, Button::DPadDown);
+                        handle_controller_up(ctx, Button::DPadUp);
+                    } else if lvalue > 0xFFF {
+                        handle_controller_down(ctx, Button::DPadDown);
+                    } else {
+                        handle_controller_down(ctx, Button::DPadUp);
+                    }
+                }
+
             }
             _ => {}
         }
@@ -133,12 +193,18 @@ pub fn main(shared_data : Arc<shared::Data>)-> io::Result<()> {
     // Initialize SDL
 
     let sdl = sdl2::init().map_err(err)?;
+    let game_controller_subsystem = sdl.game_controller().map_err(err)?;
     let video = sdl.video().map_err(err)?;
     let window = video.window("Coral", 256 * 3, 240 * 3).position_centered().build().map_err(err)?;
     let mut canvas = window.into_canvas().accelerated().build().map_err(err)?;
     let creator = canvas.texture_creator();
     let mut event_pump = sdl.event_pump().unwrap();
 
+    // Initialize Joysticks
+    let num_joysticks = game_controller_subsystem.num_joysticks().map_err(err)?;
+    let _controller_a = if num_joysticks > 0 {
+        Some(game_controller_subsystem.open(0).map_err(err)?)
+    } else {None};
     // Initialize Context
 
     let mut ctx = create_context(shared_data, &creator)?;
@@ -150,6 +216,7 @@ pub fn main(shared_data : Arc<shared::Data>)-> io::Result<()> {
         update_screen(&mut ctx)?;
         update_controller(&mut ctx)?;
         render(&mut canvas, &mut ctx)?;
+        std::thread::sleep(std::time::Duration::from_micros(16000));
     }
 
     Ok(())
