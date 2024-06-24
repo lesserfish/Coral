@@ -131,22 +131,26 @@ fn control(event_pump : &mut sdl2::EventPump, ctx : &mut Context) -> io::Result<
             Event::ControllerAxisMotion { axis, value, .. } => {
                 let lvalue = value as i64;
                 if axis == Axis::LeftX {
-                    if lvalue.abs() < 0x1FF {
+                    if lvalue.abs() < 0x100 {
                         handle_controller_up(ctx, Button::DPadRight);
                         handle_controller_up(ctx, Button::DPadLeft);
-                    } else if lvalue > 0xFFF {
+                    } else if lvalue > 0x100 {
+                        handle_controller_up(ctx, Button::DPadLeft);
                         handle_controller_down(ctx, Button::DPadRight);
                     } else {
+                        handle_controller_up(ctx, Button::DPadRight);
                         handle_controller_down(ctx, Button::DPadLeft);
                     }
                 }
                 else if axis == Axis::LeftY {
-                    if lvalue.abs() < 0x1FF {
+                    if lvalue.abs() < 0x100 {
                         handle_controller_up(ctx, Button::DPadDown);
                         handle_controller_up(ctx, Button::DPadUp);
-                    } else if lvalue > 0xFFF {
+                    } else if lvalue > 0x100 {
+                        handle_controller_up(ctx, Button::DPadUp);
                         handle_controller_down(ctx, Button::DPadDown);
                     } else {
+                        handle_controller_up(ctx, Button::DPadDown);
                         handle_controller_down(ctx, Button::DPadUp);
                     }
                 }
