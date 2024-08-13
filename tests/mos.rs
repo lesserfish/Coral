@@ -59,7 +59,9 @@ impl fmt::Debug for Cycles {
 #[derive(Serialize, Deserialize, Debug)]
 struct Test {
     name: String,
+    #[serde(rename(deserialize = "initial"))]
     initial_state: TomHarte,
+    #[serde(rename(deserialize = "final"))]
     final_state: TomHarte,
     cycles: Cycles,
 }
@@ -209,7 +211,7 @@ fn test_opcode(opcode: u8) {
 }
 
 fn load_tests(opcode: u8) -> io::Result<Tests> {
-    let filepath = format!("tests/TomHarte/6502/v1/f_{:02x}.json", opcode);
+    let filepath = format!("tests/TomHarte/6502/v1/{:02x}.json", opcode);
     println!("{}", filepath);
     let mut file = File::open(filepath)?;
 
