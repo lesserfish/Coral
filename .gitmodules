@@ -1,0 +1,3 @@
+[submodule "tests/TomHarte"]
+	path = tests/TomHarte
+	url = https://github.com/SingleStepTests/65x02

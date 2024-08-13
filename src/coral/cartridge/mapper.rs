@@ -1,6 +1,8 @@
 pub mod types;
+mod nomapper;
 mod mapper0;
 mod mapper2;
+
 
 use std::io;
 use std::io::Error;
@@ -20,7 +22,7 @@ pub fn choose_mapper(cartridge : &mut Cartridge::Cartridge) -> io::Result<()>{
 }
 
 pub fn generic_mapper() -> types::Mapper {
-    types::Mapper{0 : Box::new(mapper0::new(0, 0))}
+    types::Mapper{0 : Box::new(nomapper::new())}
 }
 
 
