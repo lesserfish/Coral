@@ -15,6 +15,8 @@
         in pkgs.mkShell {
           packages = with pkgs; [
             rustup
+            SDL2
+            iconv
           ];
           shellHook = ''
             fish
@@ -29,6 +31,8 @@
         in pkgs.mkShell {
           packages = with pkgs; [
             rustup
+            SDL2
+            iconv
           ];
           shellHook = ''
             fish
